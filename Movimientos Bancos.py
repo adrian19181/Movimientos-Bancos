@@ -151,7 +151,12 @@ def render_custom_table(df):
     return html
 
 
-def render_kpi_card(titulo, valor_str):
+def render_kpi_card(titulo, valor_str, detalle_str=""):
+    detalle_html = (
+        f'<div style="color: #CBD5E1; font-size: 12px; margin-top: 6px; font-weight: 500;">{detalle_str}</div>'
+        if detalle_str
+        else ""
+    )
     return f"""
     <div style="
         background-color: #0F172A;
@@ -164,6 +169,7 @@ def render_kpi_card(titulo, valor_str):
     ">
         <div style="color: #FFEB3B; font-size: 13px; font-weight: 600; margin-bottom: 4px;">{titulo}</div>
         <div style="color: #FFFFFF; font-size: 20px; font-weight: bold;">{valor_str}</div>
+        {detalle_html}
     </div>
     """
 
@@ -593,7 +599,27 @@ else:
     )
 
     if filtro_ano_todos == "Todos":
-        total_kpi_retiros_t = df_retiros_todos["Valor"].sum() if not df_retiros_todos.empty else 0.0
+        # Desglose Retiros Austro vs Jardín
+        total_retiros_a_f = df_retiros_a["Valor"].sum() if not df_retiros_a.empty else 0.0
+        total_retiros_j_f = df_retiros_j["Valor"].sum() if not df_retiros_j.empty else 0.0
+        total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
+
+        if not df_retiros_a.empty:
+            min_a = df_retiros_a["Fecha_dt"].min()
+            max_a = df_retiros_a["Fecha_dt"].max()
+            dias_a = (max_a - min_a).days if pd.notnull(min_a) and pd.notnull(max_a) else 1
+            kpi_retiro_dia_a = total_retiros_a_f / (dias_a if dias_a > 0 else 1)
+        else:
+            kpi_retiro_dia_a = 0.0
+
+        if not df_retiros_j.empty:
+            min_j = df_retiros_j["Fecha_dt"].min()
+            max_j = df_retiros_j["Fecha_dt"].max()
+            dias_j = (max_j - min_j).days if pd.notnull(min_j) and pd.notnull(max_j) else 1
+            kpi_retiro_dia_j = total_retiros_j_f / (dias_j if dias_j > 0 else 1)
+        else:
+            kpi_retiro_dia_j = 0.0
+
         if not df_retiros_todos.empty:
             min_fecha_t = df_retiros_todos["Fecha_dt"].min()
             max_fecha_t = df_retiros_todos["Fecha_dt"].max()
@@ -614,13 +640,16 @@ else:
     else:
         ano_sel_t = int(filtro_ano_todos)
 
-        if not df_retiros_todos.empty and "Año" in df_retiros_todos.columns:
-            df_retiros_ft = df_retiros_todos[df_retiros_todos["Año"] == ano_sel_t]
-            total_kpi_retiros_t = df_retiros_ft["Valor"].sum()
-            kpi_retiro_dia_t = total_kpi_retiros_t / 365
-        else:
-            total_kpi_retiros_t = 0.0
-            kpi_retiro_dia_t = 0.0
+        df_retiros_fa = df_retiros_a[df_retiros_a["Año"] == ano_sel_t] if (not df_retiros_a.empty and "Año" in df_retiros_a.columns) else pd.DataFrame()
+        total_retiros_a_f = df_retiros_fa["Valor"].sum() if not df_retiros_fa.empty else 0.0
+        kpi_retiro_dia_a = total_retiros_a_f / 365
+
+        df_retiros_fj = df_retiros_j[df_retiros_j["Año"] == ano_sel_t] if (not df_retiros_j.empty and "Año" in df_retiros_j.columns) else pd.DataFrame()
+        total_retiros_j_f = df_retiros_fj["Valor"].sum() if not df_retiros_fj.empty else 0.0
+        kpi_retiro_dia_j = total_retiros_j_f / 365
+
+        total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
+        kpi_retiro_dia_t = total_kpi_retiros_t / 365
 
         total_kpi_trans_t = df_trans_todos[df_trans_todos["Año"] == ano_sel_t]["Valor"].sum() if not df_trans_todos.empty and "Año" in df_trans_todos.columns else 0.0
         total_kpi_compras_t = df_compras_a[df_compras_a["Año"] == ano_sel_t]["Valor"].sum() if not df_compras_a.empty and "Año" in df_compras_a.columns else 0.0
@@ -632,11 +661,14 @@ else:
         lbl_compras_t = f"Total Compras por Internet ({filtro_ano_todos})"
         lbl_swift_t = f"Total Swift ({filtro_ano_todos})"
 
+    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}"
+    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}"
+
     col1_t, col2_t = st.columns(2)
 
     with col1_t:
-        st.html(render_kpi_card(lbl_total_retiros_t, f"${total_kpi_retiros_t:,.2f}"))
-        st.html(render_kpi_card(lbl_retiro_dia_t, f"${kpi_retiro_dia_t:,.2f}"))
+        st.html(render_kpi_card(lbl_total_retiros_t, f"${total_kpi_retiros_t:,.2f}", txt_det_total_retiros))
+        st.html(render_kpi_card(lbl_retiro_dia_t, f"${kpi_retiro_dia_t:,.2f}", txt_det_retiro_dia))
         st.html(render_kpi_card(lbl_compras_t, f"${total_kpi_compras_t:,.2f}"))
 
     with col2_t:
