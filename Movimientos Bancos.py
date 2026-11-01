@@ -213,7 +213,6 @@ if not df_raw_trans_a.empty and "Fecha" in df_raw_trans_a.columns and "Valor" in
     df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
     df_trans_fechas_a = df_trans_a_copy
 
-    # Identificar transferencias con costo (excluyendo 'Token' en columna D / cualquier campo)
     def es_token_row(row):
         if len(row) > 3 and "token" in str(row.iloc[3]).lower():
             return True
@@ -395,6 +394,14 @@ if banco_seleccionado == "Banco del Austro":
         n_trans_costo_a = len(df_trans_costo_a) if not df_trans_costo_a.empty else 0
         costo_total_trans_a = n_trans_costo_a * 0.41
 
+        if not df_trans_fechas_a.empty:
+            min_f_trans = df_trans_fechas_a["Fecha_dt"].min()
+            max_f_trans = df_trans_fechas_a["Fecha_dt"].max()
+            dias_periodo_trans = (max_f_trans - min_f_trans).days
+            anos_periodo_trans = dias_periodo_trans / 365.25
+        else:
+            anos_periodo_trans = 0.0
+
         total_kpi_compras = df_compras_a["Valor"].sum() if not df_compras_a.empty else 0.0
         total_kpi_swift = df_swift_a["Valor"].sum() if not df_swift_a.empty else 0.0
 
@@ -414,13 +421,22 @@ if banco_seleccionado == "Banco del Austro":
             total_kpi_retiros = 0.0
             kpi_retiro_dia = 0.0
 
-        total_kpi_trans = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel]["Valor"].sum() if not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns else 0.0
+        df_trans_fa_sel = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel] if not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns else pd.DataFrame()
+        total_kpi_trans = df_trans_fa_sel["Valor"].sum() if not df_trans_fa_sel.empty else 0.0
 
         if not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns:
             n_trans_costo_a = len(df_trans_costo_a[df_trans_costo_a["Año"] == ano_sel])
         else:
             n_trans_costo_a = 0
         costo_total_trans_a = n_trans_costo_a * 0.41
+
+        if not df_trans_fa_sel.empty:
+            min_f_trans = df_trans_fa_sel["Fecha_dt"].min()
+            max_f_trans = df_trans_fa_sel["Fecha_dt"].max()
+            dias_periodo_trans = (max_f_trans - min_f_trans).days
+            anos_periodo_trans = dias_periodo_trans / 365.25
+        else:
+            anos_periodo_trans = 0.0
 
         total_kpi_compras = df_compras_a[df_compras_a["Año"] == ano_sel]["Valor"].sum() if not df_compras_a.empty and "Año" in df_compras_a.columns else 0.0
         total_kpi_swift = df_swift_a[df_swift_a["Año"] == ano_sel]["Valor"].sum() if not df_swift_a.empty and "Año" in df_swift_a.columns else 0.0
@@ -432,7 +448,7 @@ if banco_seleccionado == "Banco del Austro":
         lbl_compras = f"Total Compras por Internet ({filtro_ano_austro})"
         lbl_swift = f"Total Swift ({filtro_ano_austro})"
 
-    txt_det_costo_trans = f"Nº Transferencias con Costo: {n_trans_costo_a:,}"
+    txt_det_costo_trans = f"Nº Transferencias con Costo: {n_trans_costo_a:,} | Período: {anos_periodo_trans:.2f} años"
 
     col1, col2 = st.columns(2)
     with col1:
@@ -630,7 +646,6 @@ else:
     )
 
     if filtro_ano_todos == "Todos":
-        # Desglose Retiros Austro vs Jardín
         total_retiros_a_f = df_retiros_a["Valor"].sum() if not df_retiros_a.empty else 0.0
         total_retiros_j_f = df_retiros_j["Valor"].sum() if not df_retiros_j.empty else 0.0
         total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
@@ -659,7 +674,6 @@ else:
         else:
             kpi_retiro_dia_t = 0.0
 
-        # Desglose Transferencias Austro vs Jardín
         total_trans_a_f = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
         total_trans_j_f = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
         total_kpi_trans_t = total_trans_a_f + total_trans_j_f
