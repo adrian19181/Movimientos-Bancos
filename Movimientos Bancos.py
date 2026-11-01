@@ -8,7 +8,6 @@ st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
 if st.button("🔄 Actualizar Datos", use_container_width=True):
     st.rerun()
 
-# Título principal centrado
 st.html(
     '<h2 style="text-align: center; font-size: 26px; font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: #FFFFFF;">Movimientos: Austro y Jardín.</h2>'
 )
@@ -213,17 +212,10 @@ if not df_raw_trans_a.empty and "Fecha" in df_raw_trans_a.columns and "Valor" in
     df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
     df_trans_fechas_a = df_trans_a_copy
 
-    # Excluir registros que contengan 'token' en la columna D o en la fila
-    def es_token_row(row):
-        if len(row) > 3 and "token" in str(row.iloc[3]).lower():
-            return True
-        for val in row.values:
-            if "token" in str(val).lower():
-                return True
-        return False
-
-    es_token_mask = df_trans_a_copy.apply(es_token_row, axis=1)
-    df_trans_costo_a = df_trans_a_copy[~es_token_mask].copy()
+    # Filtrar STRICTAMENTE la Columna D ("Institución")
+    col_d_name = "Institución" if "Institución" in df_trans_a_copy.columns else df_trans_a_copy.columns[3]
+    mask_token = df_trans_a_copy[col_d_name].astype(str).str.strip().str.lower() == "token"
+    df_trans_costo_a = df_trans_a_copy[~mask_token].copy()
 
 if not df_raw_trans_a.empty and "Institución" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
     df_trans_clean_a = df_raw_trans_a[["Institución", "Valor"]].dropna().copy()
