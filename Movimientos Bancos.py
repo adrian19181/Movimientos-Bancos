@@ -153,7 +153,7 @@ def render_custom_table(df):
 
 def render_kpi_card(titulo, valor_str, detalle_str=""):
     detalle_html = (
-        f'<div style="color: #CBD5E1; font-size: 12px; margin-top: 6px; font-weight: 500;">{detalle_str}</div>'
+        f'<div style="color: #E2E8F0; font-size: 14px; margin-top: 6px; font-weight: 600;">{detalle_str}</div>'
         if detalle_str
         else ""
     )
@@ -628,7 +628,11 @@ else:
         else:
             kpi_retiro_dia_t = 0.0
 
-        total_kpi_trans_t = df_trans_todos["Valor"].sum() if not df_trans_todos.empty else 0.0
+        # Desglose Transferencias Austro vs Jardín
+        total_trans_a_f = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
+        total_trans_j_f = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
+        total_kpi_trans_t = total_trans_a_f + total_trans_j_f
+
         total_kpi_compras_t = df_compras_a["Valor"].sum() if not df_compras_a.empty else 0.0
         total_kpi_swift_t = df_swift_a["Valor"].sum() if not df_swift_a.empty else 0.0
 
@@ -651,7 +655,14 @@ else:
         total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
         kpi_retiro_dia_t = total_kpi_retiros_t / 365
 
-        total_kpi_trans_t = df_trans_todos[df_trans_todos["Año"] == ano_sel_t]["Valor"].sum() if not df_trans_todos.empty and "Año" in df_trans_todos.columns else 0.0
+        df_trans_fa = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel_t] if (not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns) else pd.DataFrame()
+        total_trans_a_f = df_trans_fa["Valor"].sum() if not df_trans_fa.empty else 0.0
+
+        df_trans_fj = df_trans_fechas_j[df_trans_fechas_j["Año"] == ano_sel_t] if (not df_trans_fechas_j.empty and "Año" in df_trans_fechas_j.columns) else pd.DataFrame()
+        total_trans_j_f = df_trans_fj["Valor"].sum() if not df_trans_fj.empty else 0.0
+
+        total_kpi_trans_t = total_trans_a_f + total_trans_j_f
+
         total_kpi_compras_t = df_compras_a[df_compras_a["Año"] == ano_sel_t]["Valor"].sum() if not df_compras_a.empty and "Año" in df_compras_a.columns else 0.0
         total_kpi_swift_t = df_swift_a[df_swift_a["Año"] == ano_sel_t]["Valor"].sum() if not df_swift_a.empty and "Año" in df_swift_a.columns else 0.0
 
@@ -663,6 +674,7 @@ else:
 
     txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}"
     txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}"
+    txt_det_trans = f"Austro: ${total_trans_a_f:,.2f} | Jardín: ${total_trans_j_f:,.2f}"
 
     col1_t, col2_t = st.columns(2)
 
@@ -672,7 +684,7 @@ else:
         st.html(render_kpi_card(lbl_compras_t, f"${total_kpi_compras_t:,.2f}"))
 
     with col2_t:
-        st.html(render_kpi_card(lbl_trans_t, f"${total_kpi_trans_t:,.2f}"))
+        st.html(render_kpi_card(lbl_trans_t, f"${total_kpi_trans_t:,.2f}", txt_det_trans))
         st.html(render_kpi_card(lbl_swift_t, f"${total_kpi_swift_t:,.2f}"))
 
 if __name__ == "__main__":
