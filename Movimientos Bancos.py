@@ -304,6 +304,18 @@ if banco_seleccionado == "Banco del Austro":
     else:
         txt_ultima_trans = "N/A"
 
+    # Tabla adicional de Transferencias por Año (Banco del Austro)
+    if not df_trans_fechas.empty:
+        tabla_trans_anos = (
+            df_trans_fechas.groupby("Año")["Valor"]
+            .sum()
+            .reset_index()
+        )
+        tabla_trans_anos["Año"] = tabla_trans_anos["Año"].astype(str)
+        tabla_trans_anos.columns = ["Año", "Total Transferido"]
+    else:
+        tabla_trans_anos = pd.DataFrame(columns=["Año", "Total Transferido"])
+
     # 3. Compras por Internet
     df_raw_compras = obtener_hoja(hojas_austro, "Compras por internet")
 
@@ -405,6 +417,7 @@ if banco_seleccionado == "Banco del Austro":
 
     with subtab2:
         st.html(render_custom_table(tabla_trans))
+        st.html(render_custom_table(tabla_trans_anos))
         st.html(render_kpi_card("Última Transferencia (Fecha y Valor)", txt_ultima_trans))
 
     with subtab3:
