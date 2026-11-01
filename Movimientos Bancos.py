@@ -213,6 +213,7 @@ if not df_raw_trans_a.empty and "Fecha" in df_raw_trans_a.columns and "Valor" in
     df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
     df_trans_fechas_a = df_trans_a_copy
 
+    # Excluir registros que contengan 'token' en la columna D o en la fila
     def es_token_row(row):
         if len(row) > 3 and "token" in str(row.iloc[3]).lower():
             return True
