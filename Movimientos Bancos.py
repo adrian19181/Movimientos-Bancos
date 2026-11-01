@@ -203,11 +203,27 @@ if not df_raw_retiros_a.empty and "Fecha" in df_raw_retiros_a.columns and "Valor
 df_raw_trans_a = obtener_hoja(hojas_austro, "Transferencias Interbancarias")
 df_trans_fechas_a = pd.DataFrame()
 df_trans_clean_a = pd.DataFrame()
+df_trans_costo_a = pd.DataFrame()
+
 if not df_raw_trans_a.empty and "Fecha" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
-    df_trans_fechas_a = df_raw_trans_a[["Fecha", "Valor"]].dropna().copy()
-    df_trans_fechas_a["Fecha_dt"] = pd.to_datetime(df_trans_fechas_a["Fecha"], format="%d/%m/%Y", dayfirst=True, errors="coerce")
-    df_trans_fechas_a = df_trans_fechas_a.dropna(subset=["Fecha_dt"]).sort_values("Fecha_dt")
-    df_trans_fechas_a["Año"] = df_trans_fechas_a["Fecha_dt"].dt.year
+    df_trans_a_copy = df_raw_trans_a.copy()
+    df_trans_a_copy["Fecha_dt"] = pd.to_datetime(df_trans_a_copy["Fecha"], format="%d/%m/%Y", dayfirst=True, errors="coerce")
+    df_trans_a_copy["Valor"] = pd.to_numeric(df_trans_a_copy["Valor"], errors="coerce")
+    df_trans_a_copy = df_trans_a_copy.dropna(subset=["Fecha_dt", "Valor"]).sort_values("Fecha_dt")
+    df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
+    df_trans_fechas_a = df_trans_a_copy
+
+    # Identificar transferencias con costo (excluyendo 'Token' en columna D / cualquier campo)
+    def es_token_row(row):
+        if len(row) > 3 and "token" in str(row.iloc[3]).lower():
+            return True
+        for val in row.values:
+            if "token" in str(val).lower():
+                return True
+        return False
+
+    es_token_mask = df_trans_a_copy.apply(es_token_row, axis=1)
+    df_trans_costo_a = df_trans_a_copy[~es_token_mask].copy()
 
 if not df_raw_trans_a.empty and "Institución" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
     df_trans_clean_a = df_raw_trans_a[["Institución", "Valor"]].dropna().copy()
@@ -376,12 +392,16 @@ if banco_seleccionado == "Banco del Austro":
             kpi_retiro_dia = 0.0
 
         total_kpi_trans = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
+        n_trans_costo_a = len(df_trans_costo_a) if not df_trans_costo_a.empty else 0
+        costo_total_trans_a = n_trans_costo_a * 0.41
+
         total_kpi_compras = df_compras_a["Valor"].sum() if not df_compras_a.empty else 0.0
         total_kpi_swift = df_swift_a["Valor"].sum() if not df_swift_a.empty else 0.0
 
         lbl_total_retiros = "Total Retiros (Todos los Años)"
         lbl_retiro_dia = "Retiro / Día (Todos los Años)"
         lbl_trans = "Total Transferencias"
+        lbl_costo_trans = "Costo Total Transferencias"
         lbl_compras = "Total Compras por Internet"
         lbl_swift = "Total Swift"
     else:
@@ -395,14 +415,24 @@ if banco_seleccionado == "Banco del Austro":
             kpi_retiro_dia = 0.0
 
         total_kpi_trans = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel]["Valor"].sum() if not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns else 0.0
+
+        if not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns:
+            n_trans_costo_a = len(df_trans_costo_a[df_trans_costo_a["Año"] == ano_sel])
+        else:
+            n_trans_costo_a = 0
+        costo_total_trans_a = n_trans_costo_a * 0.41
+
         total_kpi_compras = df_compras_a[df_compras_a["Año"] == ano_sel]["Valor"].sum() if not df_compras_a.empty and "Año" in df_compras_a.columns else 0.0
         total_kpi_swift = df_swift_a[df_swift_a["Año"] == ano_sel]["Valor"].sum() if not df_swift_a.empty and "Año" in df_swift_a.columns else 0.0
 
         lbl_total_retiros = f"Total Retiros ({filtro_ano_austro})"
         lbl_retiro_dia = f"Retiro / Día ({filtro_ano_austro})"
         lbl_trans = f"Total Transferencias ({filtro_ano_austro})"
+        lbl_costo_trans = f"Costo Total Transferencias ({filtro_ano_austro})"
         lbl_compras = f"Total Compras por Internet ({filtro_ano_austro})"
         lbl_swift = f"Total Swift ({filtro_ano_austro})"
+
+    txt_det_costo_trans = f"Nº Transferencias con Costo: {n_trans_costo_a:,}"
 
     col1, col2 = st.columns(2)
     with col1:
@@ -411,6 +441,7 @@ if banco_seleccionado == "Banco del Austro":
         st.html(render_kpi_card(lbl_compras, f"${total_kpi_compras:,.2f}"))
     with col2:
         st.html(render_kpi_card(lbl_trans, f"${total_kpi_trans:,.2f}"))
+        st.html(render_kpi_card(lbl_costo_trans, f"${costo_total_trans_a:,.2f}", txt_det_costo_trans))
         st.html(render_kpi_card(lbl_swift, f"${total_kpi_swift:,.2f}"))
 
 # ==============================================================================
