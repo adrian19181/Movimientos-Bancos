@@ -211,6 +211,7 @@ total_impuestos_a = 0.0
 total_dentista_a = 0.0
 total_token_a = 0.0
 total_inversiones_a = 0.0
+total_otros_a = 0.0
 
 if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     df_trans_a_copy = df_raw_trans_a.copy()
@@ -268,12 +269,17 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     mask_inversiones = mask_inversiones_raw & ~mask_especial & ~mask_tarjetas & ~mask_impuestos & ~mask_dentista & ~mask_token_c
     total_inversiones_a = df_trans_a_copy.loc[mask_inversiones, "Valor"].sum()
 
+    # 6. Otros (excluyendo categorías anteriores)
+    mask_otros_a = ~mask_tarjetas & ~mask_impuestos & ~mask_dentista & ~mask_token_c & ~mask_inversiones
+    total_otros_a = df_trans_a_copy.loc[mask_otros_a, "Valor"].sum()
+
     tabla_gastos_trans_a = pd.DataFrame([
         {"Tipo Gasto": "Pago<br>tarjetas", "Valor Total": total_tarjetas_a},
         {"Tipo Gasto": "Impuestos<br>Importaciones", "Valor Total": total_impuestos_a},
         {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_a},
         {"Tipo Gasto": "Token", "Valor Total": total_token_a},
-        {"Tipo Gasto": "Inversiones", "Valor Total": total_inversiones_a}
+        {"Tipo Gasto": "Inversiones", "Valor Total": total_inversiones_a},
+        {"Tipo Gasto": "Otros", "Valor Total": total_otros_a}
     ])
 
 if not df_raw_trans_a.empty and "Institución" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
@@ -744,14 +750,14 @@ else:
     df_trans_todos = pd.concat([df_trans_fechas_a, df_trans_fechas_j], ignore_index=True) if not (df_trans_fechas_a.empty and df_trans_fechas_j.empty) else pd.DataFrame()
 
     tabla_gastos_trans_todos = pd.DataFrame([
-        {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
-        {"Tipo Gasto": "Pago tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
-        {"Tipo Gasto": "Impuestos Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
-        {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
-        {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
-        {"Tipo Gasto": "Intereses Ganados<br>(Jardín)", "Valor Total": total_intereses_ganados_j},
-        {"Tipo Gasto": "Gastos<br>(Jardín)", "Valor Total": total_gastos_j},
-        {"Tipo Gasto": "Otros<br>(Jardín)", "Valor Total": total_otros_j}
+        {"Tipo Gasto": "Inversiones<br>(Austro,<br>Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
+        {"Tipo Gasto": "Pago<br>tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
+        {"Tipo Gasto": "Impuestos<br>Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
+        {"Tipo Gasto": "Dentista<br>(Austro,<br>Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
+        {"Tipo Gasto": "Token<br><br>(Austro)", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Intereses<br>Ganados<br>(Jardín)", "Valor Total": total_intereses_ganados_j},
+        {"Tipo Gasto": "Gastos<br><br>(Jardín)", "Valor Total": total_gastos_j},
+        {"Tipo Gasto": "Otros<br>(Austro,<br>Jardín)", "Valor Total": total_otros_a + total_otros_j}
     ])
 
     tabla_trans_todos_anos = (
