@@ -206,6 +206,11 @@ df_trans_fechas_a = pd.DataFrame()
 df_trans_clean_a = pd.DataFrame()
 df_trans_costo_a = pd.DataFrame()
 tabla_gastos_trans_a = pd.DataFrame(columns=["Tipo Gasto", "Valor Total"])
+total_tarjetas_a = 0.0
+total_impuestos_a = 0.0
+total_dentista_a = 0.0
+total_token_a = 0.0
+total_inversiones_a = 0.0
 
 if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     df_trans_a_copy = df_raw_trans_a.copy()
@@ -322,6 +327,11 @@ df_raw_trans_j = obtener_hoja(hojas_jardin, "Transferencias Interbancarias")
 df_trans_fechas_j = pd.DataFrame()
 df_trans_costo_j = pd.DataFrame()
 tabla_gastos_trans_j = pd.DataFrame(columns=["Tipo Gasto", "Valor Total"])
+total_inversiones_j = 0.0
+total_intereses_ganados_j = 0.0
+total_dentista_j = 0.0
+total_gastos_j = 0.0
+total_otros_j = 0.0
 
 if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in df_raw_trans_j.columns:
     df_trans_j_copy = df_raw_trans_j.copy()
@@ -733,6 +743,17 @@ else:
     # 2. Transferencias Interbancarias Consolidadas (Austro + Jardín Azuayo)
     df_trans_todos = pd.concat([df_trans_fechas_a, df_trans_fechas_j], ignore_index=True) if not (df_trans_fechas_a.empty and df_trans_fechas_j.empty) else pd.DataFrame()
 
+    tabla_gastos_trans_todos = pd.DataFrame([
+        {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
+        {"Tipo Gasto": "Pago tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
+        {"Tipo Gasto": "Impuestos Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
+        {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
+        {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Intereses Ganados<br>(Jardín)", "Valor Total": total_intereses_ganados_j},
+        {"Tipo Gasto": "Gastos<br>(Jardín)", "Valor Total": total_gastos_j},
+        {"Tipo Gasto": "Otros<br>(Jardín)", "Valor Total": total_otros_j}
+    ])
+
     tabla_trans_todos_anos = (
         df_trans_todos.groupby("Año")["Valor"]
         .agg(N_Trans="count", Total_USD="sum")
@@ -769,6 +790,8 @@ else:
         st.html(render_kpi_card("Último Retiro Consolidado (Fecha y Valor)", txt_ultimo_retiro_t))
 
     with subtab_t2:
+        if not tabla_gastos_trans_todos.empty:
+            st.html(render_custom_table(tabla_gastos_trans_todos))
         st.html(render_custom_table(tabla_trans_todos_anos))
         st.html(render_kpi_card("Última Transferencia Consolidada (Fecha y Valor)", txt_ultima_trans_t))
 
