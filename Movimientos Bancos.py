@@ -217,12 +217,12 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
         df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
         df_trans_fechas_a = df_trans_a_copy
 
-        # Filtrar la Columna D ("Institución")
+        # Filtrar Columna D ("Institución")
         col_d_name = "Institución" if "Institución" in df_trans_a_copy.columns else df_trans_a_copy.columns[3]
         mask_token = df_trans_a_copy[col_d_name].astype(str).str.strip().str.lower() == "token"
         df_trans_costo_a = df_trans_a_copy[~mask_token].copy()
 
-    # Clasificación de Gastos en Columna C (Búsqueda por palabras clave en Descripción/Motivo)
+    # Clasificación de Gastos en Columna C (Motivo/Descripción)
     col_c_name = df_trans_a_copy.columns[2] if len(df_trans_a_copy.columns) > 2 else "Descripción"
     patron_tarjetas = "TARJETA|MASTERCARD|VISA|AMERICAN|AMEX"
     mask_tarjetas = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_tarjetas, case=False, na=False)
@@ -383,10 +383,10 @@ if banco_seleccionado == "Banco del Austro":
         st.html(render_kpi_card("Último Retiro (Fecha y Valor)", txt_ultimo_retiro))
 
     with subtab2:
-        st.html(render_custom_table(tabla_trans))
-        st.html(render_custom_table(tabla_trans_anos))
         if not tabla_gastos_trans_a.empty:
             st.html(render_custom_table(tabla_gastos_trans_a))
+        st.html(render_custom_table(tabla_trans))
+        st.html(render_custom_table(tabla_trans_anos))
         st.html(render_kpi_card("Última Transferencia (Fecha y Valor)", txt_ultima_trans))
 
     with subtab3:
