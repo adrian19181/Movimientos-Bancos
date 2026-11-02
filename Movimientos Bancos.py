@@ -317,6 +317,7 @@ if not df_raw_retiros_j.empty and "Fecha" in df_raw_retiros_j.columns and "Valor
 df_raw_trans_j = obtener_hoja(hojas_jardin, "Transferencias Interbancarias")
 df_trans_fechas_j = pd.DataFrame()
 df_trans_costo_j = pd.DataFrame()
+tabla_gastos_trans_j = pd.DataFrame(columns=["Tipo Gasto", "Valor Total"])
 
 if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in df_raw_trans_j.columns:
     df_trans_j_copy = df_raw_trans_j.copy()
@@ -333,6 +334,18 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
 
     mask_costo_j = df_trans_j_copy[col_cuenta_j].apply(tiene_costo_jardin)
     df_trans_costo_j = df_trans_j_copy[mask_costo_j].copy()
+
+    # Clasificación Inversiones (Columna D con 7 caracteres)
+    def es_inversion_jardin(cuenta_val):
+        cuenta_str = str(cuenta_val).strip()
+        return len(cuenta_str) == 7
+
+    mask_inversiones_j = df_trans_j_copy[col_cuenta_j].apply(es_inversion_jardin)
+    total_inversiones_j = df_trans_j_copy.loc[mask_inversiones_j, "Valor"].sum()
+
+    tabla_gastos_trans_j = pd.DataFrame([
+        {"Tipo Gasto": "Inversiones", "Valor Total": total_inversiones_j}
+    ])
 
 
 # Filtro principal en lista desplegable
@@ -571,6 +584,8 @@ elif banco_seleccionado == "Jardín Azuayo":
         st.html(render_kpi_card("Último Retiro (Fecha y Valor)", txt_ultimo_retiro_j))
 
     with subtab_j2:
+        if not tabla_gastos_trans_j.empty:
+            st.html(render_custom_table(tabla_gastos_trans_j))
         st.html(render_custom_table(tabla_trans_j_anos))
         st.html(render_kpi_card("Última Transferencia (Fecha y Valor)", txt_ultima_trans_j))
 
@@ -794,65 +809,4 @@ else:
         total_retiros_a_f = df_retiros_fa["Valor"].sum() if not df_retiros_fa.empty else 0.0
         kpi_retiro_dia_a = total_retiros_a_f / 365
 
-        df_retiros_fj = df_retiros_j[df_retiros_j["Año"] == ano_sel_t] if (not df_retiros_j.empty and "Año" in df_retiros_j.columns) else pd.DataFrame()
-        total_retiros_j_f = df_retiros_fj["Valor"].sum() if not df_retiros_fj.empty else 0.0
-        kpi_retiro_dia_j = total_retiros_j_f / 365
-
-        total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
-        kpi_retiro_dia_t = total_kpi_retiros_t / 365
-
-        df_trans_fa = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel_t] if (not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns) else pd.DataFrame()
-        total_trans_a_f = df_trans_fa["Valor"].sum() if not df_trans_fa.empty else 0.0
-
-        df_trans_fj = df_trans_fechas_j[df_trans_fechas_j["Año"] == ano_sel_t] if (not df_trans_fechas_j.empty and "Año" in df_trans_fechas_j.columns) else pd.DataFrame()
-        total_trans_j_f = df_trans_fj["Valor"].sum() if not df_trans_fj.empty else 0.0
-
-        total_kpi_trans_t = total_trans_a_f + total_trans_j_f
-
-        n_trans_costo_a_sel = len(df_trans_costo_a[df_trans_costo_a["Año"] == ano_sel_t]) if (not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns) else 0
-        n_trans_costo_j_sel = len(df_trans_costo_j[df_trans_costo_j["Año"] == ano_sel_t]) if (not df_trans_costo_j.empty and "Año" in df_trans_costo_j.columns) else 0
-        costo_total_trans_t = (n_trans_costo_a_sel + n_trans_costo_j_sel) * 0.41
-
-        df_trans_todos_sel = df_trans_todos[df_trans_todos["Año"] == ano_sel_t] if (not df_trans_todos.empty and "Año" in df_trans_todos.columns) else pd.DataFrame()
-        if not df_trans_todos_sel.empty:
-            min_f_trans_t = df_trans_todos_sel["Fecha_dt"].min()
-            max_f_trans_t = df_trans_todos_sel["Fecha_dt"].max()
-            dias_periodo_trans_t = (max_f_trans_t - min_f_trans_t).days
-            anos_periodo_trans_t = dias_periodo_trans_t / 365.25
-        else:
-            anos_periodo_trans_t = 0.0
-
-        total_kpi_compras_t = df_compras_a[df_compras_a["Año"] == ano_sel_t]["Valor"].sum() if not df_compras_a.empty and "Año" in df_compras_a.columns else 0.0
-        total_kpi_swift_t = df_swift_a[df_swift_a["Año"] == ano_sel_t]["Valor"].sum() if not df_swift_a.empty and "Año" in df_swift_a.columns else 0.0
-
-        lbl_total_retiros_t = f"Total Retiros Consolidados ({filtro_ano_todos})"
-        lbl_retiro_dia_t = f"Retiro / Día Consolidado ({filtro_ano_todos})"
-        lbl_trans_t = f"Total Transferencias Consolidadas ({filtro_ano_todos})"
-        lbl_costo_trans_t = f"Costo Total Transferencias ({filtro_ano_todos})"
-        lbl_compras_t = f"Total Compras por Internet ({filtro_ano_todos})"
-        lbl_swift_t = f"Total Swift ({filtro_ano_todos})"
-
-    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}"
-    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}"
-    txt_det_trans = f"Austro: ${total_trans_a_f:,.2f} | Jardín: ${total_trans_j_f:,.2f}"
-
-    n_trans_costo_a_det = len(df_trans_costo_a[df_trans_costo_a["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns) else (len(df_trans_costo_a) if not df_trans_costo_a.empty else 0)
-    n_trans_costo_j_det = len(df_trans_costo_j[df_trans_costo_j["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_j.empty and "Año" in df_trans_costo_j.columns) else (len(df_trans_costo_j) if not df_trans_costo_j.empty else 0)
-    n_tot_costo_det = n_trans_costo_a_det + n_trans_costo_j_det
-    txt_det_costo_trans_t = f"Nº Transferencias con Costo: {n_tot_costo_det:,} | Período: {anos_periodo_trans_t:.2f} años"
-
-    col1_t, col2_t = st.columns(2)
-
-    with col1_t:
-        st.html(render_kpi_card(lbl_total_retiros_t, f"${total_kpi_retiros_t:,.2f}", txt_det_total_retiros))
-        st.html(render_kpi_card(lbl_retiro_dia_t, f"${kpi_retiro_dia_t:,.2f}", txt_det_retiro_dia))
-        st.html(render_kpi_card(lbl_compras_t, f"${total_kpi_compras_t:,.2f}"))
-
-    with col2_t:
-        st.html(render_kpi_card(lbl_trans_t, f"${total_kpi_trans_t:,.2f}", txt_det_trans))
-        st.html(render_kpi_card(lbl_costo_trans_t, f"${costo_total_trans_t:,.2f}", txt_det_costo_trans_t))
-        st.html(render_kpi_card(lbl_swift_t, f"${total_kpi_swift_t:,.2f}"))
-
-if __name__ == "__main__":
-    if "streamlit" not in sys.argv[0]:
-        os.system(f'streamlit run "{__file__}" --server.port 8501')
+        df_retiros_fj = df
