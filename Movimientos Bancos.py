@@ -234,29 +234,33 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     # 1. Pago tarjetas (excluyendo 'TARJETA DE CRDITO DEPSITO GARANTA' e incluyendo la transacción especial del 14/8/2026)
     patron_tarjetas = "TARJETA|MASTERCARD|VISA|AMERICAN|AMEX"
     patron_ignorar = "GARANTA|GARANTIA|DEPSITO GARANTA|DEPOSITO GARANTIA|TARJETA DE CRDITO DEPSITO GARANTA"
-    mask_tarjetas = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_tarjetas, case=False, na=False)
+    mask_tarjetas_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_tarjetas, case=False, na=False)
     mask_ignorar = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_ignorar, case=False, na=False)
-    mask_tarjetas = (mask_tarjetas & ~mask_ignorar) | mask_especial
+    mask_tarjetas = (mask_tarjetas_raw & ~mask_ignorar) | mask_especial
     total_tarjetas_a = df_trans_a_copy.loc[mask_tarjetas, "Valor"].sum()
 
-    # 2. Impuestos Importaciones
+    # 2. Impuestos Importaciones (excluyendo Pago tarjetas)
     patron_impuestos = "GUIA|ADUANA"
-    mask_impuestos = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_impuestos, case=False, na=False)
+    mask_impuestos_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_impuestos, case=False, na=False)
+    mask_impuestos = mask_impuestos_raw & ~mask_tarjetas
     total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
 
-    # 3. Dentista
+    # 3. Dentista (excluyendo Pago tarjetas e Impuestos)
     patron_dentista = "TRATAMIENTO DE CONDUCTO|CALZAS|CONSULTA|Dentista|CIRUJA|DENTAL|OPERACION"
-    mask_dentista = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_dentista, case=False, na=False)
+    mask_dentista_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_dentista, case=False, na=False)
+    mask_dentista = mask_dentista_raw & ~mask_tarjetas & ~mask_impuestos
     total_dentista_a = df_trans_a_copy.loc[mask_dentista, "Valor"].sum()
 
-    # 4. Token
+    # 4. Token (excluyendo Pago tarjetas, Impuestos y Dentista)
     patron_token_c = "TOKEN"
-    mask_token_c = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_token_c, case=False, na=False)
+    mask_token_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_token_c, case=False, na=False)
+    mask_token_c = mask_token_raw & ~mask_tarjetas & ~mask_impuestos & ~mask_dentista
     total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
 
-    # 5. Inversiones (excluyendo la transacción especial del 14/8/2026)
+    # 5. Inversiones (excluyendo la transacción especial del 14/8/2026 y categorías anteriores)
     patron_inversiones = "PROGRAMADO|DIRECTA|PRUEBA|JARDN AZUAYO|JARDÍN AZUAYO|JARDN|JARDÍN|PRUEBA PRODUBANCO 1|TRANSFERENCIA ADRIAN 800|FONDO AHORRO|FLEXI AHORRO"
-    mask_inversiones = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_inversiones, case=False, na=False) & ~mask_especial
+    mask_inversiones_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_inversiones, case=False, na=False)
+    mask_inversiones = mask_inversiones_raw & ~mask_especial & ~mask_tarjetas & ~mask_impuestos & ~mask_dentista & ~mask_token_c
     total_inversiones_a = df_trans_a_copy.loc[mask_inversiones, "Valor"].sum()
 
     tabla_gastos_trans_a = pd.DataFrame([
