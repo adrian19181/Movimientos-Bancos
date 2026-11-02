@@ -224,13 +224,19 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
 
     # Clasificación de Gastos en Columna C (Motivo/Descripción)
     col_c_name = df_trans_a_copy.columns[2] if len(df_trans_a_copy.columns) > 2 else "Descripción"
+
+    # Transacción especial (14/8/2026, 190.41, TRANSFERENCIA DIRECTA Produbanco)
+    mask_especial = (
+        df_trans_a_copy["Fecha"].astype(str).str.contains("14/8/2026|14/08/2026", na=False) |
+        (df_trans_a_copy["Fecha_dt"] == "2026-08-14")
+    ) & (df_trans_a_copy["Valor"].round(2) == 190.41)
     
-    # 1. Pago tarjetas (excluyendo 'TARJETA DE CRDITO DEPSITO GARANTA')
+    # 1. Pago tarjetas (excluyendo 'TARJETA DE CRDITO DEPSITO GARANTA' e incluyendo la transacción especial del 14/8/2026)
     patron_tarjetas = "TARJETA|MASTERCARD|VISA|AMERICAN|AMEX"
     patron_ignorar = "GARANTA|GARANTIA|DEPSITO GARANTA|DEPOSITO GARANTIA|TARJETA DE CRDITO DEPSITO GARANTA"
     mask_tarjetas = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_tarjetas, case=False, na=False)
     mask_ignorar = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_ignorar, case=False, na=False)
-    mask_tarjetas = mask_tarjetas & ~mask_ignorar
+    mask_tarjetas = (mask_tarjetas & ~mask_ignorar) | mask_especial
     total_tarjetas_a = df_trans_a_copy.loc[mask_tarjetas, "Valor"].sum()
 
     # 2. Impuestos Importaciones
@@ -248,11 +254,17 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     mask_token_c = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_token_c, case=False, na=False)
     total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
 
+    # 5. Inversiones (excluyendo la transacción especial del 14/8/2026)
+    patron_inversiones = "PROGRAMADO|DIRECTA|PRUEBA|JARDN AZUAYO|JARDÍN AZUAYO|JARDN|JARDÍN|PRUEBA PRODUBANCO 1|TRANSFERENCIA ADRIAN 800|FONDO AHORRO"
+    mask_inversiones = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_inversiones, case=False, na=False) & ~mask_especial
+    total_inversiones_a = df_trans_a_copy.loc[mask_inversiones, "Valor"].sum()
+
     tabla_gastos_trans_a = pd.DataFrame([
         {"Tipo Gasto": "Pago<br>tarjetas", "Valor Total": total_tarjetas_a},
         {"Tipo Gasto": "Impuestos<br>Importaciones", "Valor Total": total_impuestos_a},
         {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_a},
-        {"Tipo Gasto": "Token", "Valor Total": total_token_a}
+        {"Tipo Gasto": "Token", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Inversiones", "Valor Total": total_inversiones_a}
     ])
 
 if not df_raw_trans_a.empty and "Institución" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
