@@ -344,10 +344,11 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
 
     # Clasificación Inversiones
     # 1) Columna D == 7 caracteres
-    # 2) Columna D > 7 caracteres y Columna C contiene palabras clave de Austro / Jardín / Adrián
+    # 2) Columna D > 7 caracteres y Columna C contiene palabras clave de Austro / Jardín / Adrián / transferencia o está vacía
     mask_eq7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() == 7
-    patron_inv_extra_j = "6390 a banco del Austro|plazo fijo austro|jardín azuayo|jardin azuayo|Adrián Narváez|adrian narvaez|Adrián austro|adrian austro|banco austro|austro futuro|austro"
-    mask_inv_text_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_inv_extra_j, case=False, na=False)
+    patron_inv_extra_j = "6390 a banco del Austro|plazo fijo austro|jardín azuayo|jardin azuayo|Adrián Narváez|adrian narvaez|Adrián austro|adrian austro|banco austro|austro futuro|austro|transferencia"
+    mask_vacia_j = df_trans_j_copy[col_c_name_j].isna() | (df_trans_j_copy[col_c_name_j].astype(str).str.strip() == "") | (df_trans_j_copy[col_c_name_j].astype(str).str.strip().str.lower() == "nan")
+    mask_inv_text_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_inv_extra_j, case=False, na=False) | mask_vacia_j
     mask_inversiones_j = mask_eq7_j | (mask_gt7_j & mask_inv_text_j)
     total_inversiones_j = df_trans_j_copy.loc[mask_inversiones_j, "Valor"].sum()
 
