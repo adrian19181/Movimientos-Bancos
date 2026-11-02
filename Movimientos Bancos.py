@@ -335,18 +335,20 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     mask_costo_j = df_trans_j_copy[col_cuenta_j].apply(tiene_costo_jardin)
     df_trans_costo_j = df_trans_j_copy[mask_costo_j].copy()
 
-    # Clasificación Inversiones (Columna D con 7 caracteres)
-    def es_inversion_jardin(cuenta_val):
-        cuenta_str = str(cuenta_val).strip()
-        return len(cuenta_str) == 7
+    col_c_name_j = df_trans_j_copy.columns[2] if len(df_trans_j_copy.columns) > 2 else "Descripción"
+    mask_gt7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() > 7
 
-    mask_inversiones_j = df_trans_j_copy[col_cuenta_j].apply(es_inversion_jardin)
+    # Clasificación Inversiones
+    # 1) Columna D == 7 caracteres
+    # 2) Columna D > 7 caracteres y Columna C contiene palabras clave de Austro / Jardín / Adrián
+    mask_eq7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() == 7
+    patron_inv_extra_j = "6390 a banco del Austro|plazo fijo austro|jardín azuayo|jardin azuayo|Adrián Narváez|adrian narvaez|Adrián austro|adrian austro|banco austro|austro futuro|austro"
+    mask_inv_text_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_inv_extra_j, case=False, na=False)
+    mask_inversiones_j = mask_eq7_j | (mask_gt7_j & mask_inv_text_j)
     total_inversiones_j = df_trans_j_copy.loc[mask_inversiones_j, "Valor"].sum()
 
     # Clasificación Intereses Ganados (Columna D > 7 caracteres y Columna C contiene interés / intereses)
-    col_c_name_j = df_trans_j_copy.columns[2] if len(df_trans_j_copy.columns) > 2 else "Descripción"
     patron_interes_j = "INTERÉS|INTERESES|INTERES"
-    mask_gt7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() > 7
     mask_interes_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_interes_j, case=False, na=False)
     mask_intereses_ganados_j = mask_gt7_j & mask_interes_j
     total_intereses_ganados_j = df_trans_j_copy.loc[mask_intereses_ganados_j, "Valor"].sum()
