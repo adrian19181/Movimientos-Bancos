@@ -238,9 +238,15 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     mask_impuestos = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_impuestos, case=False, na=False)
     total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
 
+    # 3. Dentista
+    patron_dentista = "TRATAMIENTO DE CONDUCTO|CALZAS|CONSULTA|Dentista|CIRUJA|DENTAL|OPERACION"
+    mask_dentista = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_dentista, case=False, na=False)
+    total_dentista_a = df_trans_a_copy.loc[mask_dentista, "Valor"].sum()
+
     tabla_gastos_trans_a = pd.DataFrame([
         {"Tipo Gasto": "Pago<br>tarjetas", "Valor Total": total_tarjetas_a},
-        {"Tipo Gasto": "Impuestos<br>Importaciones", "Valor Total": total_impuestos_a}
+        {"Tipo Gasto": "Impuestos<br>Importaciones", "Valor Total": total_impuestos_a},
+        {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_a}
     ])
 
 if not df_raw_trans_a.empty and "Institución" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
