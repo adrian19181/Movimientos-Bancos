@@ -255,7 +255,7 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
 
     # 5. Inversiones (excluyendo la transacción especial del 14/8/2026)
-    patron_inversiones = "PROGRAMADO|DIRECTA|PRUEBA|JARDN AZUAYO|JARDÍN AZUAYO|JARDN|JARDÍN|PRUEBA PRODUBANCO 1|TRANSFERENCIA ADRIAN 800|FONDO AHORRO"
+    patron_inversiones = "PROGRAMADO|DIRECTA|PRUEBA|JARDN AZUAYO|JARDÍN AZUAYO|JARDN|JARDÍN|PRUEBA PRODUBANCO 1|TRANSFERENCIA ADRIAN 800|FONDO AHORRO|FLEXI AHORRO"
     mask_inversiones = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_inversiones, case=False, na=False) & ~mask_especial
     total_inversiones_a = df_trans_a_copy.loc[mask_inversiones, "Valor"].sum()
 
