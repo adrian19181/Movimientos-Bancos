@@ -138,6 +138,7 @@ def render_custom_table(df):
                     or "Día" in col_name
                     or "Transferido" in col_name
                     or "Comprado" in col_name
+                    or "Valor" in col_name
                 ):
                     formatted_val = f"${val:,.2f}"
                 else:
@@ -204,18 +205,32 @@ df_raw_trans_a = obtener_hoja(hojas_austro, "Transferencias Interbancarias")
 df_trans_fechas_a = pd.DataFrame()
 df_trans_clean_a = pd.DataFrame()
 df_trans_costo_a = pd.DataFrame()
+tabla_gastos_trans_a = pd.DataFrame(columns=["Tipo Gasto", "Valor Total"])
 
-if not df_raw_trans_a.empty and "Fecha" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
+if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     df_trans_a_copy = df_raw_trans_a.copy()
-    df_trans_a_copy["Fecha_dt"] = pd.to_datetime(df_trans_a_copy["Fecha"], format="%d/%m/%Y", dayfirst=True, errors="coerce")
     df_trans_a_copy["Valor"] = pd.to_numeric(df_trans_a_copy["Valor"], errors="coerce")
-    df_trans_a_copy = df_trans_a_copy.dropna(subset=["Fecha_dt", "Valor"]).sort_values("Fecha_dt")
-    df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
-    df_trans_fechas_a = df_trans_a_copy
+    
+    if "Fecha" in df_trans_a_copy.columns:
+        df_trans_a_copy["Fecha_dt"] = pd.to_datetime(df_trans_a_copy["Fecha"], format="%d/%m/%Y", dayfirst=True, errors="coerce")
+        df_trans_a_copy = df_trans_a_copy.dropna(subset=["Fecha_dt", "Valor"]).sort_values("Fecha_dt")
+        df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
+        df_trans_fechas_a = df_trans_a_copy
 
-    col_d_name = "Institución" if "Institución" in df_trans_a_copy.columns else df_trans_a_copy.columns[3]
-    mask_token = df_trans_a_copy[col_d_name].astype(str).str.strip().str.lower() == "token"
-    df_trans_costo_a = df_trans_a_copy[~mask_token].copy()
+        # Filtrar la Columna D ("Institución")
+        col_d_name = "Institución" if "Institución" in df_trans_a_copy.columns else df_trans_a_copy.columns[3]
+        mask_token = df_trans_a_copy[col_d_name].astype(str).str.strip().str.lower() == "token"
+        df_trans_costo_a = df_trans_a_copy[~mask_token].copy()
+
+    # Clasificación de Gastos en Columna C (Búsqueda por palabras clave en Descripción/Motivo)
+    col_c_name = df_trans_a_copy.columns[2] if len(df_trans_a_copy.columns) > 2 else "Descripción"
+    patron_tarjetas = "TARJETA|MASTERCARD|VISA|AMERICAN|AMEX"
+    mask_tarjetas = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_tarjetas, case=False, na=False)
+    total_tarjetas_a = df_trans_a_copy.loc[mask_tarjetas, "Valor"].sum()
+
+    tabla_gastos_trans_a = pd.DataFrame([
+        {"Tipo Gasto": "Pago tarjetas", "Valor Total": total_tarjetas_a}
+    ])
 
 if not df_raw_trans_a.empty and "Institución" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
     df_trans_clean_a = df_raw_trans_a[["Institución", "Valor"]].dropna().copy()
@@ -276,7 +291,6 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     df_trans_j_copy["Año"] = df_trans_j_copy["Fecha_dt"].dt.year
     df_trans_fechas_j = df_trans_j_copy
 
-    # Filtrar Columna D (Cuenta): Cuentas con 7 caracteres son internas (sin costo). Las demás pagan $0.41
     col_cuenta_j = df_trans_j_copy.columns[3] if len(df_trans_j_copy.columns) > 3 else "Cuenta"
     def tiene_costo_jardin(cuenta_val):
         cuenta_str = str(cuenta_val).strip()
@@ -371,6 +385,8 @@ if banco_seleccionado == "Banco del Austro":
     with subtab2:
         st.html(render_custom_table(tabla_trans))
         st.html(render_custom_table(tabla_trans_anos))
+        if not tabla_gastos_trans_a.empty:
+            st.html(render_custom_table(tabla_gastos_trans_a))
         st.html(render_kpi_card("Última Transferencia (Fecha y Valor)", txt_ultima_trans))
 
     with subtab3:
