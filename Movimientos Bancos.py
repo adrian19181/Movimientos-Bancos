@@ -225,19 +225,22 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     # Clasificación de Gastos en Columna C (Motivo/Descripción)
     col_c_name = df_trans_a_copy.columns[2] if len(df_trans_a_copy.columns) > 2 else "Descripción"
     
-    # 1. Pago tarjetas
+    # 1. Pago tarjetas (excluyendo 'TARJETA DE CRDITO DEPSITO GARANTA')
     patron_tarjetas = "TARJETA|MASTERCARD|VISA|AMERICAN|AMEX"
+    patron_ignorar = "GARANTA|GARANTIA|DEPSITO GARANTA|DEPOSITO GARANTIA|TARJETA DE CRDITO DEPSITO GARANTA"
     mask_tarjetas = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_tarjetas, case=False, na=False)
+    mask_ignorar = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_ignorar, case=False, na=False)
+    mask_tarjetas = mask_tarjetas & ~mask_ignorar
     total_tarjetas_a = df_trans_a_copy.loc[mask_tarjetas, "Valor"].sum()
 
-    # 2. Impuestos Importaciones (GUIA / ADUANA)
+    # 2. Impuestos Importaciones
     patron_impuestos = "GUIA|ADUANA"
     mask_impuestos = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_impuestos, case=False, na=False)
     total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
 
     tabla_gastos_trans_a = pd.DataFrame([
-        {"Tipo Gasto": "Pago tarjetas", "Valor Total": total_tarjetas_a},
-        {"Tipo Gasto": "Impuestos Importaciones", "Valor Total": total_impuestos_a}
+        {"Tipo Gasto": "Pago<br>tarjetas", "Valor Total": total_tarjetas_a},
+        {"Tipo Gasto": "Impuestos<br>Importaciones", "Valor Total": total_impuestos_a}
     ])
 
 if not df_raw_trans_a.empty and "Institución" in df_raw_trans_a.columns and "Valor" in df_raw_trans_a.columns:
