@@ -350,26 +350,31 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     # Clasificación Intereses Ganados (Columna D > 7 caracteres y Columna C contiene interés / intereses)
     patron_interes_j = "INTERÉS|INTERESES|INTERES"
     mask_interes_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_interes_j, case=False, na=False)
-    mask_intereses_ganados_j = mask_gt7_j & mask_interes_j
+    mask_intereses_ganados_j = mask_gt7_j & mask_interes_j & ~mask_inversiones_j
     total_intereses_ganados_j = df_trans_j_copy.loc[mask_intereses_ganados_j, "Valor"].sum()
 
     # Clasificación Dentista (Columna D > 7 caracteres y Columna C contiene Corona Adrián / Calza / Calzas / Dentista)
     patron_dentista_j = "Corona Adrián|Corona Adrian|Calza|Calzas|Dentista"
     mask_dentista_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_dentista_j, case=False, na=False)
-    mask_dentista_final_j = mask_gt7_j & mask_dentista_j
+    mask_dentista_final_j = mask_gt7_j & mask_dentista_j & ~mask_inversiones_j & ~mask_intereses_ganados_j
     total_dentista_j = df_trans_j_copy.loc[mask_dentista_final_j, "Valor"].sum()
 
     # Clasificación Gastos (Columna D > 7 caracteres y Columna C contiene compra / pago / recarga / Comprar)
     patron_gastos_j = "compra|pago|recarga|Comprar"
     mask_gastos_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_gastos_j, case=False, na=False)
-    mask_gastos_final_j = mask_gt7_j & mask_gastos_j
+    mask_gastos_final_j = mask_gt7_j & mask_gastos_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j
     total_gastos_j = df_trans_j_copy.loc[mask_gastos_final_j, "Valor"].sum()
+
+    # Clasificación Otros (Columna D > 7 caracteres no clasificados previamente)
+    mask_otros_j = mask_gt7_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j
+    total_otros_j = df_trans_j_copy.loc[mask_otros_j, "Valor"].sum()
 
     tabla_gastos_trans_j = pd.DataFrame([
         {"Tipo Gasto": "Inversiones", "Valor Total": total_inversiones_j},
         {"Tipo Gasto": "Intereses Ganados", "Valor Total": total_intereses_ganados_j},
         {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_j},
-        {"Tipo Gasto": "Gastos", "Valor Total": total_gastos_j}
+        {"Tipo Gasto": "Gastos", "Valor Total": total_gastos_j},
+        {"Tipo Gasto": "Otros", "Valor Total": total_otros_j}
     ])
 
 
