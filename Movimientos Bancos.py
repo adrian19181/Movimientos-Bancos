@@ -139,6 +139,9 @@ def render_custom_table(df):
                     or "Transferido" in col_name
                     or "Comprado" in col_name
                     or "Valor" in col_name
+                    or "Ticket" in col_name
+                    or "Mensual" in col_name
+                    or "Promedio" in col_name
                 ):
                     formatted_val = f"${val:,.2f}"
                 else:
@@ -463,11 +466,13 @@ if banco_seleccionado == "Banco del Austro":
     )
 
     if not tabla_anos.empty:
+        tabla_anos["Ticket_Promedio"] = tabla_anos["Total_USD"] / tabla_anos["N_Retiros"]
+        tabla_anos["Prom_Mensual"] = tabla_anos["Total_USD"] / 12
         tabla_anos["Retiro_Dia"] = tabla_anos["Total_USD"] / 365
         tabla_anos["Año"] = tabla_anos["Año"].astype(str)
-        tabla_anos.columns = ["Año", "Nº Retiros", "Total", "Retiro / Día"]
+        tabla_anos.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
     else:
-        tabla_anos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Retiro / Día"])
+        tabla_anos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
 
     if not df_trans_clean_a.empty:
         tabla_trans = (
@@ -541,13 +546,21 @@ if banco_seleccionado == "Banco del Austro":
 
     if filtro_ano_austro == "Todos":
         total_kpi_retiros = df_retiros_a["Valor"].sum() if not df_retiros_a.empty else 0.0
+        n_retiros_austro = len(df_retiros_a) if not df_retiros_a.empty else 0
+        ticket_prom_austro = total_kpi_retiros / n_retiros_austro if n_retiros_austro > 0 else 0.0
+
         if not df_retiros_a.empty:
             min_fecha = df_retiros_a["Fecha_dt"].min()
             max_fecha = df_retiros_a["Fecha_dt"].max()
             dias_totales_rango = (max_fecha - min_fecha).days if pd.notnull(min_fecha) and pd.notnull(max_fecha) else 1
-            kpi_retiro_dia = total_kpi_retiros / (dias_totales_rango if dias_totales_rango > 0 else 1)
+            dias_validos = dias_totales_rango if dias_totales_rango > 0 else 1
+            kpi_retiro_dia = total_kpi_retiros / dias_validos
+            frecuencia_dias_austro = dias_validos / n_retiros_austro if n_retiros_austro > 0 else 0.0
+            prom_mensual_austro = (total_kpi_retiros / (dias_validos / 30.44)) if dias_validos > 0 else 0.0
         else:
             kpi_retiro_dia = 0.0
+            frecuencia_dias_austro = 0.0
+            prom_mensual_austro = 0.0
 
         total_kpi_trans = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
         n_trans_costo_a = len(df_trans_costo_a) if not df_trans_costo_a.empty else 0
@@ -575,10 +588,18 @@ if banco_seleccionado == "Banco del Austro":
         if not df_retiros_a.empty and "Año" in df_retiros_a.columns:
             df_retiros_f = df_retiros_a[df_retiros_a["Año"] == ano_sel]
             total_kpi_retiros = df_retiros_f["Valor"].sum()
+            n_retiros_austro = len(df_retiros_f)
+            ticket_prom_austro = total_kpi_retiros / n_retiros_austro if n_retiros_austro > 0 else 0.0
             kpi_retiro_dia = total_kpi_retiros / 365
+            frecuencia_dias_austro = 365 / n_retiros_austro if n_retiros_austro > 0 else 0.0
+            prom_mensual_austro = total_kpi_retiros / 12
         else:
             total_kpi_retiros = 0.0
+            n_retiros_austro = 0
+            ticket_prom_austro = 0.0
             kpi_retiro_dia = 0.0
+            frecuencia_dias_austro = 0.0
+            prom_mensual_austro = 0.0
 
         df_trans_fa_sel = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel] if not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns else pd.DataFrame()
         total_kpi_trans = df_trans_fa_sel["Valor"].sum() if not df_trans_fa_sel.empty else 0.0
@@ -607,12 +628,14 @@ if banco_seleccionado == "Banco del Austro":
         lbl_compras = f"Total Compras por Internet ({filtro_ano_austro})"
         lbl_swift = f"Total Swift ({filtro_ano_austro})"
 
+    txt_det_total_retiros = f"Ticket Prom: ${ticket_prom_austro:,.2f} | Prom Mensual: ${prom_mensual_austro:,.2f}"
+    txt_det_retiro_dia = f"Frecuencia: c/{frecuencia_dias_austro:.1f} días ({n_retiros_austro:,} retiros)"
     txt_det_costo_trans = f"Nº Transferencias con Costo: {n_trans_costo_a:,} | Período: {anos_periodo_trans:.2f} años"
 
     col1, col2 = st.columns(2)
     with col1:
-        st.html(render_kpi_card(lbl_total_retiros, f"${total_kpi_retiros:,.2f}"))
-        st.html(render_kpi_card(lbl_retiro_dia, f"${kpi_retiro_dia:,.2f}"))
+        st.html(render_kpi_card(lbl_total_retiros, f"${total_kpi_retiros:,.2f}", txt_det_total_retiros))
+        st.html(render_kpi_card(lbl_retiro_dia, f"${kpi_retiro_dia:,.2f}", txt_det_retiro_dia))
         st.html(render_kpi_card(lbl_compras, f"${total_kpi_compras:,.2f}"))
     with col2:
         st.html(render_kpi_card(lbl_trans, f"${total_kpi_trans:,.2f}"))
@@ -637,11 +660,13 @@ elif banco_seleccionado == "Jardín Azuayo":
     )
 
     if not tabla_anos_j.empty:
+        tabla_anos_j["Ticket_Promedio"] = tabla_anos_j["Total_USD"] / tabla_anos_j["N_Retiros"]
+        tabla_anos_j["Prom_Mensual"] = tabla_anos_j["Total_USD"] / 12
         tabla_anos_j["Retiro_Dia"] = tabla_anos_j["Total_USD"] / 365
         tabla_anos_j["Año"] = tabla_anos_j["Año"].astype(str)
-        tabla_anos_j.columns = ["Año", "Nº Retiros", "Total", "Retiro / Día"]
+        tabla_anos_j.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
     else:
-        tabla_anos_j = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Retiro / Día"])
+        tabla_anos_j = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
 
     if not df_trans_fechas_j.empty:
         ultima_trans_j = df_trans_fechas_j.iloc[-1]
@@ -690,13 +715,21 @@ elif banco_seleccionado == "Jardín Azuayo":
 
     if filtro_ano_jardin == "Todos":
         total_kpi_retiros_j = df_retiros_j["Valor"].sum() if not df_retiros_j.empty else 0.0
+        n_retiros_jardin = len(df_retiros_j) if not df_retiros_j.empty else 0
+        ticket_prom_j = total_kpi_retiros_j / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
+
         if not df_retiros_j.empty:
             min_fecha_j = df_retiros_j["Fecha_dt"].min()
             max_fecha_j = df_retiros_j["Fecha_dt"].max()
             dias_totales_j = (max_fecha_j - min_fecha_j).days if pd.notnull(min_fecha_j) and pd.notnull(max_fecha_j) else 1
-            kpi_retiro_dia_j = total_kpi_retiros_j / (dias_totales_j if dias_totales_j > 0 else 1)
+            dias_validos_j = dias_totales_j if dias_totales_j > 0 else 1
+            kpi_retiro_dia_j = total_kpi_retiros_j / dias_validos_j
+            frecuencia_dias_j = dias_validos_j / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
+            prom_mensual_j = (total_kpi_retiros_j / (dias_validos_j / 30.44)) if dias_validos_j > 0 else 0.0
         else:
             kpi_retiro_dia_j = 0.0
+            frecuencia_dias_j = 0.0
+            prom_mensual_j = 0.0
 
         total_kpi_trans_j = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
         n_trans_costo_j = len(df_trans_costo_j) if not df_trans_costo_j.empty else 0
@@ -719,10 +752,18 @@ elif banco_seleccionado == "Jardín Azuayo":
         if not df_retiros_j.empty and "Año" in df_retiros_j.columns:
             df_retiros_fj = df_retiros_j[df_retiros_j["Año"] == ano_sel_j]
             total_kpi_retiros_j = df_retiros_fj["Valor"].sum()
+            n_retiros_jardin = len(df_retiros_fj)
+            ticket_prom_j = total_kpi_retiros_j / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
             kpi_retiro_dia_j = total_kpi_retiros_j / 365
+            frecuencia_dias_j = 365 / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
+            prom_mensual_j = total_kpi_retiros_j / 12
         else:
             total_kpi_retiros_j = 0.0
+            n_retiros_jardin = 0
+            ticket_prom_j = 0.0
             kpi_retiro_dia_j = 0.0
+            frecuencia_dias_j = 0.0
+            prom_mensual_j = 0.0
 
         df_trans_fj_sel = df_trans_fechas_j[df_trans_fechas_j["Año"] == ano_sel_j] if not df_trans_fechas_j.empty and "Año" in df_trans_fechas_j.columns else pd.DataFrame()
         total_kpi_trans_j = df_trans_fj_sel["Valor"].sum() if not df_trans_fj_sel.empty else 0.0
@@ -746,12 +787,14 @@ elif banco_seleccionado == "Jardín Azuayo":
         lbl_trans_j = f"Total Transferencias ({filtro_ano_jardin})"
         lbl_costo_trans_j = f"Costo Total Transferencias ({filtro_ano_jardin})"
 
+    txt_det_total_retiros_j = f"Ticket Prom: ${ticket_prom_j:,.2f} | Prom Mensual: ${prom_mensual_j:,.2f}"
+    txt_det_retiro_dia_j = f"Frecuencia: c/{frecuencia_dias_j:.1f} días ({n_retiros_jardin:,} retiros)"
     txt_det_costo_trans_j = f"Nº Transferencias con Costo: {n_trans_costo_j:,} | Período: {anos_periodo_trans_j:.2f} años"
 
     col1_j, col2_j = st.columns(2)
     with col1_j:
-        st.html(render_kpi_card(lbl_total_retiros_j, f"${total_kpi_retiros_j:,.2f}"))
-        st.html(render_kpi_card(lbl_retiro_dia_j, f"${kpi_retiro_dia_j:,.2f}"))
+        st.html(render_kpi_card(lbl_total_retiros_j, f"${total_kpi_retiros_j:,.2f}", txt_det_total_retiros_j))
+        st.html(render_kpi_card(lbl_retiro_dia_j, f"${kpi_retiro_dia_j:,.2f}", txt_det_retiro_dia_j))
     with col2_j:
         st.html(render_kpi_card(lbl_trans_j, f"${total_kpi_trans_j:,.2f}"))
         st.html(render_kpi_card(lbl_costo_trans_j, f"${costo_total_trans_j:,.2f}", txt_det_costo_trans_j))
@@ -771,11 +814,13 @@ else:
     )
 
     if not tabla_anos_todos.empty:
+        tabla_anos_todos["Ticket_Promedio"] = tabla_anos_todos["Total_USD"] / tabla_anos_todos["N_Retiros"]
+        tabla_anos_todos["Prom_Mensual"] = tabla_anos_todos["Total_USD"] / 12
         tabla_anos_todos["Retiro_Dia"] = tabla_anos_todos["Total_USD"] / 365
         tabla_anos_todos["Año"] = tabla_anos_todos["Año"].astype(str)
-        tabla_anos_todos.columns = ["Año", "Nº Retiros", "Total", "Retiro / Día"]
+        tabla_anos_todos.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
     else:
-        tabla_anos_todos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Retiro / Día"])
+        tabla_anos_todos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
 
     if not df_retiros_todos.empty:
         df_retiros_todos_sorted = df_retiros_todos.sort_values("Fecha_dt")
@@ -856,6 +901,9 @@ else:
         total_retiros_j_f = df_retiros_j["Valor"].sum() if not df_retiros_j.empty else 0.0
         total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
 
+        n_retiros_tot_t = len(df_retiros_todos) if not df_retiros_todos.empty else 0
+        ticket_prom_t = total_kpi_retiros_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
+
         if not df_retiros_a.empty:
             min_a = df_retiros_a["Fecha_dt"].min()
             max_a = df_retiros_a["Fecha_dt"].max()
@@ -876,9 +924,14 @@ else:
             min_fecha_t = df_retiros_todos["Fecha_dt"].min()
             max_fecha_t = df_retiros_todos["Fecha_dt"].max()
             dias_totales_t = (max_fecha_t - min_fecha_t).days if pd.notnull(min_fecha_t) and pd.notnull(max_fecha_t) else 1
-            kpi_retiro_dia_t = total_kpi_retiros_t / (dias_totales_t if dias_totales_t > 0 else 1)
+            dias_validos_t = dias_totales_t if dias_totales_t > 0 else 1
+            kpi_retiro_dia_t = total_kpi_retiros_t / dias_validos_t
+            frecuencia_dias_t = dias_validos_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
+            prom_mensual_t = (total_kpi_retiros_t / (dias_validos_t / 30.44)) if dias_validos_t > 0 else 0.0
         else:
             kpi_retiro_dia_t = 0.0
+            frecuencia_dias_t = 0.0
+            prom_mensual_t = 0.0
 
         total_trans_a_f = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
         total_trans_j_f = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
@@ -920,6 +973,12 @@ else:
         total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
         kpi_retiro_dia_t = total_kpi_retiros_t / 365
 
+        df_retiros_todos_sel = df_retiros_todos[df_retiros_todos["Año"] == ano_sel_t] if (not df_retiros_todos.empty and "Año" in df_retiros_todos.columns) else pd.DataFrame()
+        n_retiros_tot_t = len(df_retiros_todos_sel)
+        ticket_prom_t = total_kpi_retiros_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
+        frecuencia_dias_t = 365 / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
+        prom_mensual_t = total_kpi_retiros_t / 12
+
         df_trans_fa = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel_t] if (not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns) else pd.DataFrame()
         total_trans_a_f = df_trans_fa["Valor"].sum() if not df_trans_fa.empty else 0.0
 
@@ -951,8 +1010,8 @@ else:
         lbl_compras_t = f"Total Compras por Internet ({filtro_ano_todos})"
         lbl_swift_t = f"Total Swift ({filtro_ano_todos})"
 
-    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}"
-    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}"
+    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}<br>Ticket Prom: ${ticket_prom_t:,.2f} | Prom Mensual: ${prom_mensual_t:,.2f}"
+    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}<br>Frecuencia: c/{frecuencia_dias_t:.1f} días ({n_retiros_tot_t:,} retiros)"
     txt_det_trans = f"Austro: ${total_trans_a_f:,.2f} | Jardín: ${total_trans_j_f:,.2f}"
 
     n_trans_costo_a_det = len(df_trans_costo_a[df_trans_costo_a["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns) else (len(df_trans_costo_a) if not df_trans_costo_a.empty else 0)
