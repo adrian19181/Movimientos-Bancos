@@ -207,14 +207,14 @@ df_trans_clean_a = pd.DataFrame()
 df_trans_costo_a = pd.DataFrame()
 tabla_gastos_trans_a = pd.DataFrame(columns=["Tipo Gasto", "Valor Total"])
 
+total_garantia_a = 0.0
+total_token_a = 0.0
+total_dentista_a = 0.0
+total_impuestos_a = 0.0
 total_tarjetas_a = 0.0
 total_inversiones_a = 0.0
 total_intereses_a = 0.0
-total_dentista_a = 0.0
-total_impuestos_a = 0.0
-total_token_a = 0.0
 total_gastos_a = 0.0
-total_garantia_a = 0.0
 total_otros_a = 0.0
 
 if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
@@ -237,66 +237,66 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     s_c = df_trans_a_copy[col_c_name].astype(str)
     s_d = df_trans_a_copy[col_d_name].astype(str)
 
-    # 1. Pago tarjetas: COSTO TARJETA, AMERICAN, VISA, MASTERCARD, MSTERCARD, AMEX, TRANSFERENCIA DIRECTA (solo si col D != Coop. Jardín Azuayo CJA)
+    # 1. Deposito Garantia Amex: TARJETA DE CRDITO DEPSITO GARANTA
+    patron_garantia = "TARJETA DE CRDITO DEPSITO GARANTA|DEPSITO GARANTA|DEPOSITO GARANTIA|GARANTIA|GARANTA"
+    mask_garantia_a = s_c.str.contains(patron_garantia, case=False, na=False)
+    total_garantia_a = df_trans_a_copy.loc[mask_garantia_a, "Valor"].sum()
+
+    # 2. Token: TOKEN
+    mask_token_c = s_c.str.contains("TOKEN", case=False, na=False) & ~mask_garantia_a
+    total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
+
+    # 3. Dentista: CALZAS, DENTAL, CONSULTA, CIRUJA, OPERACION, CONDUCTO
+    patron_dentista = "CALZAS|DENTAL|CONSULTA|CIRUJA|CIRUJANO|OPERACION|OPERACIÓN|CONDUCTO"
+    mask_dentista = s_c.str.contains(patron_dentista, case=False, na=False) & ~mask_garantia_a & ~mask_token_c
+    total_dentista_a = df_trans_a_copy.loc[mask_dentista, "Valor"].sum()
+
+    # 4. Impuestos Importaciones: GUIA, ADUANA, IMPUESOS, IMPUESTOS
+    patron_impuestos = "GUIA|GUÍA|ADUANA|IMPUESOS|IMPUESTOS"
+    mask_impuestos = s_c.str.contains(patron_impuestos, case=False, na=False) & ~mask_garantia_a & ~mask_token_c & ~mask_dentista
+    total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
+
+    # 5. Pago tarjetas: COSTO TARJETA, AMERICAN, VISA, MASTERCARD, MSTERCARD, AMEX, TRANSFERENCIA DIRECTA solo si col D != Coop. Jardín Azuayo CJA
     patron_tarjetas_base = "COSTO TARJETA|AMERICAN|VISA|MASTERCARD|MSTERCARD|AMEX"
     mask_tarjetas_base = s_c.str.contains(patron_tarjetas_base, case=False, na=False)
     mask_directa = s_c.str.contains("TRANSFERENCIA DIRECTA", case=False, na=False)
     mask_cja = s_d.str.contains("Coop. Jardín Azuayo CJA|JARDIN AZUAYO|JARDÍN AZUAYO", case=False, na=False)
     mask_directa_not_cja = mask_directa & ~mask_cja
     
-    mask_tarjetas = mask_tarjetas_base | mask_directa_not_cja
+    mask_tarjetas = (mask_tarjetas_base | mask_directa_not_cja) & ~mask_garantia_a & ~mask_token_c & ~mask_dentista & ~mask_impuestos
     total_tarjetas_a = df_trans_a_copy.loc[mask_tarjetas, "Valor"].sum()
 
-    # 2. Inversiones: AHORRO, PROGRAMADO, TRANSFERENCIA DIRECTA (solo cuando col D == Coop. Jardín Azuayo CJA), JARDN AZUAYO, PRUEBA PRODUBANCO 1, FLEXI AHORRO, PRUEBA, AZUAYO, TRANSFERENCIA, FONDO AHORRO, PLAZO FIJO
+    # 6. Inversiones: AHORRO, PROGRAMADO, TRANSFERENCIA DIRECTA (solo cuando col D == Coop. Jardín Azuayo CJA), JARDN AZUAYO, PRUEBA PRODUBANCO 1, FLEXI AHORRO, PRUEBA, AZUAYO, TRANSFERENCIA, FONDO AHORRO, PLAZO FIJO
     patron_inv_base = "AHORRO|PROGRAMADO|JARDN AZUAYO|JARDÍN AZUAYO|JARDN|JARDÍN|PRUEBA PRODUBANCO 1|FLEXI AHORRO|PRUEBA|AZUAYO|TRANSFERENCIA|FONDO AHORRO|PLAZO FIJO"
     mask_inv_base = s_c.str.contains(patron_inv_base, case=False, na=False)
     mask_directa_cja = mask_directa & mask_cja
     
-    mask_inversiones = (mask_inv_base | mask_directa_cja) & ~mask_tarjetas
+    mask_inversiones = (mask_inv_base | mask_directa_cja) & ~mask_garantia_a & ~mask_token_c & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas
     total_inversiones_a = df_trans_a_copy.loc[mask_inversiones, "Valor"].sum()
 
-    # 3. Intereses Ganados: INTERES, INTERESES
+    # 7. Intereses Ganados: INTERES, INTERESES
     patron_interes = "INTERES|INTERESES|INTERÉS"
-    mask_intereses = s_c.str.contains(patron_interes, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones
+    mask_intereses = s_c.str.contains(patron_interes, case=False, na=False) & ~mask_garantia_a & ~mask_token_c & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas & ~mask_inversiones
     total_intereses_a = df_trans_a_copy.loc[mask_intereses, "Valor"].sum()
 
-    # 4. Dentista: CALZAS, DENTAL, CONSULTA, CIRUJA, OPERACION, CONDUCTO
-    patron_dentista = "CALZAS|DENTAL|CONSULTA|CIRUJA|CIRUJANO|OPERACION|OPERACIÓN|CONDUCTO"
-    mask_dentista = s_c.str.contains(patron_dentista, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses
-    total_dentista_a = df_trans_a_copy.loc[mask_dentista, "Valor"].sum()
-
-    # 5. Impuestos Importaciones: GUIA, ADUANA, IMPUESOS, IMPUESTOS
-    patron_impuestos = "GUIA|GUÍA|ADUANA|IMPUESOS|IMPUESTOS"
-    mask_impuestos = s_c.str.contains(patron_impuestos, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista
-    total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
-
-    # 6. Token: TOKEN
-    mask_token_c = s_c.str.contains("TOKEN", case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos
-    total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
-
-    # 7. Gastos: PAGO, ADRIAN SALDO
+    # 8. Gastos: PAGO, ADRIAN SALDO
     patron_gastos_a = "PAGO|ADRIAN SALDO|ADRIÁN SALDO"
-    mask_gastos_a = s_c.str.contains(patron_gastos_a, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_token_c
+    mask_gastos_a = s_c.str.contains(patron_gastos_a, case=False, na=False) & ~mask_garantia_a & ~mask_token_c & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses
     total_gastos_a = df_trans_a_copy.loc[mask_gastos_a, "Valor"].sum()
 
-    # 8. Deposito Garantia Amex: TARJETA DE CRDITO DEPSITO GARANTA
-    patron_garantia = "TARJETA DE CRDITO DEPSITO GARANTA|DEPSITO GARANTA|DEPOSITO GARANTIA|GARANTIA|GARANTA"
-    mask_garantia_a = s_c.str.contains(patron_garantia, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_token_c & ~mask_gastos_a
-    total_garantia_a = df_trans_a_copy.loc[mask_garantia_a, "Valor"].sum()
-
     # 9. Otros: todo lo que no entre en las otras categorias
-    mask_otros_a = ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_token_c & ~mask_gastos_a & ~mask_garantia_a
+    mask_otros_a = ~mask_garantia_a & ~mask_token_c & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_gastos_a
     total_otros_a = df_trans_a_copy.loc[mask_otros_a, "Valor"].sum()
 
     tabla_gastos_trans_a = pd.DataFrame([
+        {"Tipo Gasto": "Deposito Garantia Amex", "Valor Total": total_garantia_a},
+        {"Tipo Gasto": "Token", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_a},
+        {"Tipo Gasto": "Impuestos Importaciones", "Valor Total": total_impuestos_a},
         {"Tipo Gasto": "Pago tarjetas", "Valor Total": total_tarjetas_a},
         {"Tipo Gasto": "Inversiones", "Valor Total": total_inversiones_a},
         {"Tipo Gasto": "Intereses Ganados", "Valor Total": total_intereses_a},
-        {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_a},
-        {"Tipo Gasto": "Impuestos Importaciones", "Valor Total": total_impuestos_a},
-        {"Tipo Gasto": "Token", "Valor Total": total_token_a},
         {"Tipo Gasto": "Gastos", "Valor Total": total_gastos_a},
-        {"Tipo Gasto": "Deposito Garantia Amex", "Valor Total": total_garantia_a},
         {"Tipo Gasto": "Otros", "Valor Total": total_otros_a}
     ])
 
@@ -767,14 +767,14 @@ else:
     df_trans_todos = pd.concat([df_trans_fechas_a, df_trans_fechas_j], ignore_index=True) if not (df_trans_fechas_a.empty and df_trans_fechas_j.empty) else pd.DataFrame()
 
     tabla_gastos_trans_todos = pd.DataFrame([
+        {"Tipo Gasto": "Deposito Garantia Amex<br>(Austro)", "Valor Total": total_garantia_a},
+        {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
+        {"Tipo Gasto": "Impuestos Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
         {"Tipo Gasto": "Pago tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
         {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
         {"Tipo Gasto": "Intereses Ganados<br>(Austro, Jardín)", "Valor Total": total_intereses_a + total_intereses_ganados_j},
-        {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
-        {"Tipo Gasto": "Impuestos Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
-        {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
         {"Tipo Gasto": "Gastos<br>(Austro, Jardín)", "Valor Total": total_gastos_a + total_gastos_j},
-        {"Tipo Gasto": "Deposito Garantia Amex<br>(Austro)", "Valor Total": total_garantia_a},
         {"Tipo Gasto": "Otros<br>(Austro, Jardín)", "Valor Total": total_otros_a + total_otros_j}
     ])
 
