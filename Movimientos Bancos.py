@@ -366,6 +366,7 @@ total_inversiones_j = 0.0
 total_intereses_ganados_j = 0.0
 total_dentista_j = 0.0
 total_gastos_j = 0.0
+total_no_asignados_j = 0.0
 total_otros_j = 0.0
 
 if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in df_raw_trans_j.columns:
@@ -385,36 +386,45 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     df_trans_costo_j = df_trans_j_copy[mask_costo_j].copy()
 
     col_c_name_j = df_trans_j_copy.columns[2] if len(df_trans_j_copy.columns) > 2 else "Descripción"
-    mask_gt7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() > 7
+    s_c_j = df_trans_j_copy[col_c_name_j].astype(str)
+    s_d_j = df_trans_j_copy[col_cuenta_j].astype(str)
 
-    # Clasificación Inversiones
-    mask_eq7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() == 7
-    patron_inv_extra_j = "6390 a banco del Austro|plazo fijo austro|jardín azuayo|jardin azuayo|Adrián Narváez|adrian narvaez|Adrián austro|adrian austro|banco austro|austro futuro|austro|transferencia"
-    mask_vacia_j = df_trans_j_copy[col_c_name_j].isna() | (df_trans_j_copy[col_c_name_j].astype(str).str.strip() == "") | (df_trans_j_copy[col_c_name_j].astype(str).str.strip().str.lower() == "nan")
-    mask_inv_text_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_inv_extra_j, case=False, na=False) | mask_vacia_j
-    mask_inversiones_j = mask_eq7_j | (mask_gt7_j & mask_inv_text_j)
+    # 1. Inversiones:
+    # - Celda de columna D tiene 7 caracteres
+    # - O columna C contiene: 6390 a banco del Austro, plazo fijo austro, austro futuro, austro futuro 1330, ahorro programado
+    mask_eq7_j = s_d_j.str.strip().str.len() == 7
+    patron_inv_j = "6390 a banco del Austro|plazo fijo austro|austro futuro 1330|austro futuro|ahorro programado"
+    mask_inv_text_j = s_c_j.str.contains(patron_inv_j, case=False, na=False)
+    mask_inversiones_j = mask_eq7_j | mask_inv_text_j
     total_inversiones_j = df_trans_j_copy.loc[mask_inversiones_j, "Valor"].sum()
 
-    # Clasificación Intereses Ganados
-    patron_interes_j = "INTERÉS|INTERESES|INTERES"
-    mask_interes_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_interes_j, case=False, na=False)
-    mask_intereses_ganados_j = mask_gt7_j & mask_interes_j & ~mask_inversiones_j
+    # 2. Intereses Ganados: INTERES, INTERESES, interés, intereses
+    patron_interes_j = "INTERES|INTERESES|INTERÉS"
+    mask_interes_j = s_c_j.str.contains(patron_interes_j, case=False, na=False)
+    mask_intereses_ganados_j = mask_interes_j & ~mask_inversiones_j
     total_intereses_ganados_j = df_trans_j_copy.loc[mask_intereses_ganados_j, "Valor"].sum()
 
-    # Clasificación Dentista
-    patron_dentista_j = "Corona Adrián|Corona Adrian|Calza|Calzas|Dentista"
-    mask_dentista_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_dentista_j, case=False, na=False)
-    mask_dentista_final_j = mask_gt7_j & mask_dentista_j & ~mask_inversiones_j & ~mask_intereses_ganados_j
+    # 3. Dentista: CALZAS, DENTAL, CONSULTA, CIRUJA, OPERACION, CONDUCTO, Corona
+    patron_dentista_j = "CALZAS|DENTAL|CONSULTA|CIRUJA|CIRUJANO|OPERACION|OPERACIÓN|CONDUCTO|CORONA"
+    mask_dentista_j = s_c_j.str.contains(patron_dentista_j, case=False, na=False)
+    mask_dentista_final_j = mask_dentista_j & ~mask_inversiones_j & ~mask_intereses_ganados_j
     total_dentista_j = df_trans_j_copy.loc[mask_dentista_final_j, "Valor"].sum()
 
-    # Clasificación Gastos
-    patron_gastos_j = "compra|pago|recarga|Comprar"
-    mask_gastos_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_gastos_j, case=False, na=False)
-    mask_gastos_final_j = mask_gt7_j & mask_gastos_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j
+    # 4. Gastos: compra, pago, recarga, Comprar
+    patron_gastos_j = "compra|pago|recarga|comprar"
+    mask_gastos_j = s_c_j.str.contains(patron_gastos_j, case=False, na=False)
+    mask_gastos_final_j = mask_gastos_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j
     total_gastos_j = df_trans_j_copy.loc[mask_gastos_final_j, "Valor"].sum()
 
-    # Clasificación Otros
-    mask_otros_j = mask_gt7_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j
+    # 5. Movimientos No Asignados:
+    # Adrián austro, austro, banco del Austro adrian, transferencia, Adrián Narváez, austro adrian, banco austro, austro futuro 66
+    patron_no_asignados_j = "Adrián austro|adrian austro|banco del Austro adrian|transferencia|Adrián Narváez|adrian narvaez|austro adrian|banco austro|austro futuro 66|austro"
+    mask_no_asignados_raw_j = s_c_j.str.contains(patron_no_asignados_j, case=False, na=False)
+    mask_no_asignados_j = mask_no_asignados_raw_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j
+    total_no_asignados_j = df_trans_j_copy.loc[mask_no_asignados_j, "Valor"].sum()
+
+    # 6. Otros: todo lo que no entre en las otras categorias
+    mask_otros_j = ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j & ~mask_no_asignados_j
     total_otros_j = df_trans_j_copy.loc[mask_otros_j, "Valor"].sum()
 
     tabla_gastos_trans_j = pd.DataFrame([
@@ -422,6 +432,7 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
         {"Tipo Gasto": "Intereses<br>Ganados", "Valor Total": total_intereses_ganados_j},
         {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_j},
         {"Tipo Gasto": "Gastos", "Valor Total": total_gastos_j},
+        {"Tipo Gasto": "Movimientos No<br>Asignados", "Valor Total": total_no_asignados_j},
         {"Tipo Gasto": "Otros", "Valor Total": total_otros_j}
     ])
 
@@ -784,6 +795,7 @@ else:
         {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
         {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
         {"Tipo Gasto": "Gastos<br>(Austro, Jardín)", "Valor Total": total_gastos_a + total_gastos_j},
+        {"Tipo Gasto": "Movimientos No<br>Asignados (Jardín)", "Valor Total": total_no_asignados_j},
         {"Tipo Gasto": "Deposito Garantia Amex<br>(Austro)", "Valor Total": total_garantia_a},
         {"Tipo Gasto": "Otros<br>(Austro, Jardín)", "Valor Total": total_otros_a + total_otros_j}
     ])
