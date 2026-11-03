@@ -155,9 +155,14 @@ def render_custom_table(df):
     return html
 
 
-def render_kpi_card(titulo, valor_str, detalle_str=""):
+def render_kpi_card(titulo, valor_str, detalle_str="", ayuda=""):
+    ayuda_html = (
+        f'<span title="{ayuda}" style="cursor: help; margin-left: 5px; font-size: 14px; color: #FFEB3B;">ⓘ</span>'
+        if ayuda
+        else ""
+    )
     detalle_html = (
-        f'<div style="color: #E2E8F0; font-size: 14px; margin-top: 6px; font-weight: 600;">{detalle_str}</div>'
+        f'<div style="color: #E2E8F0; font-size: 13px; margin-top: 6px; font-weight: 500; text-align: center;">{detalle_str}</div>'
         if detalle_str
         else ""
     )
@@ -171,7 +176,9 @@ def render_kpi_card(titulo, valor_str, detalle_str=""):
         margin-bottom: 12px;
         box-shadow: 0px 4px 6px rgba(0,0,0,0.3);
     ">
-        <div style="color: #FFEB3B; font-size: 13px; font-weight: 600; margin-bottom: 4px;">{titulo}</div>
+        <div style="color: #FFEB3B; font-size: 13px; font-weight: 600; margin-bottom: 4px;">
+            {titulo}{ayuda_html}
+        </div>
         <div style="color: #FFFFFF; font-size: 20px; font-weight: bold;">{valor_str}</div>
         {detalle_html}
     </div>
@@ -522,7 +529,7 @@ if banco_seleccionado == "Banco del Austro":
 
     with subtab1:
         st.html(render_custom_table(tabla_anos))
-        st.html(render_kpi_card("Último Retiro (Fecha y Valor)", txt_ultimo_retiro))
+        st.html(render_kpi_card("Último Retiro (Fecha y Valor)", txt_ultimo_retiro, ayuda="Fecha y monto de la última transacción de retiro en efectivo registrada."))
 
     with subtab2:
         if not tabla_gastos_trans_a.empty:
@@ -628,19 +635,30 @@ if banco_seleccionado == "Banco del Austro":
         lbl_compras = f"Total Compras por Internet ({filtro_ano_austro})"
         lbl_swift = f"Total Swift ({filtro_ano_austro})"
 
-    txt_det_total_retiros = f"Ticket Prom: ${ticket_prom_austro:,.2f} | Prom Mensual: ${prom_mensual_austro:,.2f}"
-    txt_det_retiro_dia = f"Frecuencia: c/{frecuencia_dias_austro:.1f} días ({n_retiros_austro:,} retiros)"
+    txt_det_total_retiros = f"Monto promedio por retiro: ${ticket_prom_austro:,.2f}<br>Gasto promedio mensual: ${prom_mensual_austro:,.2f}"
+    txt_det_retiro_dia = f"Frecuencia entre retiros: cada {frecuencia_dias_austro:.1f} días ({n_retiros_austro:,} retiros)"
     txt_det_costo_trans = f"Nº Transferencias con Costo: {n_trans_costo_a:,} | Período: {anos_periodo_trans:.2f} años"
+
+    ayuda_total_retiros = "Suma total del dinero en efectivo retirado en este período."
+    ayuda_retiro_dia = "Frecuencia: Cada cuántos días haces un retiro. Retiro/día: Lo que gastas en efectivo dividido por día."
 
     col1, col2 = st.columns(2)
     with col1:
-        st.html(render_kpi_card(lbl_total_retiros, f"${total_kpi_retiros:,.2f}", txt_det_total_retiros))
-        st.html(render_kpi_card(lbl_retiro_dia, f"${kpi_retiro_dia:,.2f}", txt_det_retiro_dia))
+        st.html(render_kpi_card(lbl_total_retiros, f"${total_kpi_retiros:,.2f}", txt_det_total_retiros, ayuda=ayuda_total_retiros))
+        st.html(render_kpi_card(lbl_retiro_dia, f"${kpi_retiro_dia:,.2f}", txt_det_retiro_dia, ayuda=ayuda_retiro_dia))
         st.html(render_kpi_card(lbl_compras, f"${total_kpi_compras:,.2f}"))
     with col2:
         st.html(render_kpi_card(lbl_trans, f"${total_kpi_trans:,.2f}"))
         st.html(render_kpi_card(lbl_costo_trans, f"${costo_total_trans_a:,.2f}", txt_det_costo_trans))
         st.html(render_kpi_card(lbl_swift, f"${total_kpi_swift:,.2f}"))
+
+    with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
+        st.markdown("""
+        * **Monto promedio por retiro:** Es el dinero que sacas en una sola transacción. Te indica si estás realizando extracciones grandes o pequeñas.
+        * **Frecuencia entre retiros:** Indica cada cuántos días vuelves a sacar dinero. Si el número de días es bajo (ej. cada 2 o 3 días), significa que sacas efectivo muy seguido.
+        * **Gasto promedio mensual:** Proyección del dinero en efectivo que usas al mes para comparar contra tu presupuesto.
+        * **Retiro por día:** El consumo promedio diario de efectivo.
+        """)
 
 # ==============================================================================
 # VISTA: JARDÍN AZUAYO
@@ -695,7 +713,7 @@ elif banco_seleccionado == "Jardín Azuayo":
 
     with subtab_j1:
         st.html(render_custom_table(tabla_anos_j))
-        st.html(render_kpi_card("Último Retiro (Fecha y Valor)", txt_ultimo_retiro_j))
+        st.html(render_kpi_card("Último Retiro (Fecha y Valor)", txt_ultimo_retiro_j, ayuda="Fecha y monto de la última transacción de retiro en efectivo registrada."))
 
     with subtab_j2:
         if not tabla_gastos_trans_j.empty:
@@ -787,17 +805,28 @@ elif banco_seleccionado == "Jardín Azuayo":
         lbl_trans_j = f"Total Transferencias ({filtro_ano_jardin})"
         lbl_costo_trans_j = f"Costo Total Transferencias ({filtro_ano_jardin})"
 
-    txt_det_total_retiros_j = f"Ticket Prom: ${ticket_prom_j:,.2f} | Prom Mensual: ${prom_mensual_j:,.2f}"
-    txt_det_retiro_dia_j = f"Frecuencia: c/{frecuencia_dias_j:.1f} días ({n_retiros_jardin:,} retiros)"
+    txt_det_total_retiros_j = f"Monto promedio por retiro: ${ticket_prom_j:,.2f}<br>Gasto promedio mensual: ${prom_mensual_j:,.2f}"
+    txt_det_retiro_dia_j = f"Frecuencia entre retiros: cada {frecuencia_dias_j:.1f} días ({n_retiros_jardin:,} retiros)"
     txt_det_costo_trans_j = f"Nº Transferencias con Costo: {n_trans_costo_j:,} | Período: {anos_periodo_trans_j:.2f} años"
+
+    ayuda_total_retiros_j = "Suma total del dinero en efectivo retirado en este período."
+    ayuda_retiro_dia_j = "Frecuencia: Cada cuántos días haces un retiro. Retiro/día: Lo que gastas en efectivo dividido por día."
 
     col1_j, col2_j = st.columns(2)
     with col1_j:
-        st.html(render_kpi_card(lbl_total_retiros_j, f"${total_kpi_retiros_j:,.2f}", txt_det_total_retiros_j))
-        st.html(render_kpi_card(lbl_retiro_dia_j, f"${kpi_retiro_dia_j:,.2f}", txt_det_retiro_dia_j))
+        st.html(render_kpi_card(lbl_total_retiros_j, f"${total_kpi_retiros_j:,.2f}", txt_det_total_retiros_j, ayuda=ayuda_total_retiros_j))
+        st.html(render_kpi_card(lbl_retiro_dia_j, f"${kpi_retiro_dia_j:,.2f}", txt_det_retiro_dia_j, ayuda=ayuda_retiro_dia_j))
     with col2_j:
         st.html(render_kpi_card(lbl_trans_j, f"${total_kpi_trans_j:,.2f}"))
         st.html(render_kpi_card(lbl_costo_trans_j, f"${costo_total_trans_j:,.2f}", txt_det_costo_trans_j))
+
+    with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
+        st.markdown("""
+        * **Monto promedio por retiro:** Es el dinero que sacas en una sola transacción. Te indica si estás realizando extracciones grandes o pequeñas.
+        * **Frecuencia entre retiros:** Indica cada cuántos días vuelves a sacar dinero. Si el número de días es bajo (ej. cada 2 o 3 días), significa que sacas efectivo muy seguido.
+        * **Gasto promedio mensual:** Proyección del dinero en efectivo que usas al mes para comparar contra tu presupuesto.
+        * **Retiro por día:** El consumo promedio diario de efectivo.
+        """)
 
 # ==============================================================================
 # VISTA: TODOS (CONSOLIDADO - SUMA DE AMBOS BANCOS)
@@ -878,7 +907,7 @@ else:
 
     with subtab_t1:
         st.html(render_custom_table(tabla_anos_todos))
-        st.html(render_kpi_card("Último Retiro Consolidado (Fecha y Valor)", txt_ultimo_retiro_t))
+        st.html(render_kpi_card("Último Retiro Consolidado (Fecha y Valor)", txt_ultimo_retiro_t, ayuda="Fecha y monto de la última transacción de retiro registrada entre ambos bancos."))
 
     with subtab_t2:
         if not tabla_gastos_trans_todos.empty:
@@ -1010,9 +1039,12 @@ else:
         lbl_compras_t = f"Total Compras por Internet ({filtro_ano_todos})"
         lbl_swift_t = f"Total Swift ({filtro_ano_todos})"
 
-    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}<br>Ticket Prom: ${ticket_prom_t:,.2f} | Prom Mensual: ${prom_mensual_t:,.2f}"
-    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}<br>Frecuencia: c/{frecuencia_dias_t:.1f} días ({n_retiros_tot_t:,} retiros)"
+    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}<br>Monto promedio por retiro: ${ticket_prom_t:,.2f}<br>Gasto promedio mensual: ${prom_mensual_t:,.2f}"
+    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}<br>Frecuencia entre retiros: cada {frecuencia_dias_t:.1f} días ({n_retiros_tot_t:,} retiros)"
     txt_det_trans = f"Austro: ${total_trans_a_f:,.2f} | Jardín: ${total_trans_j_f:,.2f}"
+
+    ayuda_total_retiros_t = "Suma total de retiros en efectivo consolidados de ambas entidades."
+    ayuda_retiro_dia_t = "Frecuencia: Cada cuántos días haces un retiro. Retiro/día: Lo que gastas en efectivo dividido por día."
 
     n_trans_costo_a_det = len(df_trans_costo_a[df_trans_costo_a["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns) else (len(df_trans_costo_a) if not df_trans_costo_a.empty else 0)
     n_trans_costo_j_det = len(df_trans_costo_j[df_trans_costo_j["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_j.empty and "Año" in df_trans_costo_j.columns) else (len(df_trans_costo_j) if not df_trans_costo_j.empty else 0)
@@ -1022,14 +1054,22 @@ else:
     col1_t, col2_t = st.columns(2)
 
     with col1_t:
-        st.html(render_kpi_card(lbl_total_retiros_t, f"${total_kpi_retiros_t:,.2f}", txt_det_total_retiros))
-        st.html(render_kpi_card(lbl_retiro_dia_t, f"${kpi_retiro_dia_t:,.2f}", txt_det_retiro_dia))
+        st.html(render_kpi_card(lbl_total_retiros_t, f"${total_kpi_retiros_t:,.2f}", txt_det_total_retiros, ayuda=ayuda_total_retiros_t))
+        st.html(render_kpi_card(lbl_retiro_dia_t, f"${kpi_retiro_dia_t:,.2f}", txt_det_retiro_dia, ayuda=ayuda_retiro_dia_t))
         st.html(render_kpi_card(lbl_compras_t, f"${total_kpi_compras_t:,.2f}"))
 
     with col2_t:
         st.html(render_kpi_card(lbl_trans_t, f"${total_kpi_trans_t:,.2f}", txt_det_trans))
         st.html(render_kpi_card(lbl_costo_trans_t, f"${costo_total_trans_t:,.2f}", txt_det_costo_trans_t))
         st.html(render_kpi_card(lbl_swift_t, f"${total_kpi_swift_t:,.2f}"))
+
+    with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
+        st.markdown("""
+        * **Monto promedio por retiro:** Es el dinero que sacas en una sola transacción. Te indica si estás realizando extracciones grandes o pequeñas.
+        * **Frecuencia entre retiros:** Indica cada cuántos días vuelves a sacar dinero. Si el número de días es bajo (ej. cada 2 o 3 días), significa que sacas efectivo muy seguido.
+        * **Gasto promedio mensual:** Proyección del dinero en efectivo que usas al mes para comparar contra tu presupuesto.
+        * **Retiro por día:** El consumo promedio diario de efectivo.
+        """)
 
 if __name__ == "__main__":
     if "streamlit" not in sys.argv[0]:
