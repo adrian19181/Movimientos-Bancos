@@ -70,14 +70,14 @@ def render_custom_table(df):
         white-space: nowrap;
         border-bottom: 1px solid #000000;
         border-right: 1px solid #000000;
-        width: max-content !important;
+        width: auto !important;
     }
     .custom-table th.col-sticky {
         position: sticky !important;
         left: 0 !important;
         top: 0 !important;
         z-index: 50 !important;
-        width: max-content !important;
+        width: auto !important;
         white-space: nowrap !important;
         background-color: #FFEB3B !important;
         color: #000000 !important;
@@ -93,13 +93,13 @@ def render_custom_table(df):
         font-weight: 600;
         border-bottom: 1px solid #000000;
         border-right: 1px solid #000000;
-        width: max-content !important;
+        width: auto !important;
     }
     .custom-table td.col-sticky {
         position: sticky !important;
         left: 0 !important;
         z-index: 30 !important;
-        width: max-content !important;
+        width: auto !important;
         white-space: nowrap !important;
         background-color: #FFEB3B !important;
         background-clip: padding-box !important;
@@ -788,15 +788,15 @@ else:
     df_trans_todos = pd.concat([df_trans_fechas_a, df_trans_fechas_j], ignore_index=True) if not (df_trans_fechas_a.empty and df_trans_fechas_j.empty) else pd.DataFrame()
 
     tabla_gastos_trans_todos = pd.DataFrame([
-        {"Tipo Gasto": "Intereses Ganados<br>(Austro, Jardín)", "Valor Total": total_intereses_a + total_intereses_ganados_j},
+        {"Tipo Gasto": "Intereses<br>Ganados<br>(Austro, Jardín)", "Valor Total": total_intereses_a + total_intereses_ganados_j},
         {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
-        {"Tipo Gasto": "Impuestos Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
-        {"Tipo Gasto": "Pago tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
+        {"Tipo Gasto": "Impuestos<br>Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
+        {"Tipo Gasto": "Pago<br>tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
         {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
         {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
         {"Tipo Gasto": "Gastos<br>(Austro, Jardín)", "Valor Total": total_gastos_a + total_gastos_j},
-        {"Tipo Gasto": "Movimientos No<br>Asignados (Jardín)", "Valor Total": total_no_asignados_j},
-        {"Tipo Gasto": "Deposito Garantia Amex<br>(Austro)", "Valor Total": total_garantia_a},
+        {"Tipo Gasto": "Movimientos No<br>Asignados<br>(Jardín)", "Valor Total": total_no_asignados_j},
+        {"Tipo Gasto": "Deposito Garantia<br>Amex<br>(Austro)", "Valor Total": total_garantia_a},
         {"Tipo Gasto": "Otros<br>(Austro, Jardín)", "Valor Total": total_otros_a + total_otros_j}
     ])
 
