@@ -247,22 +247,22 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     s_c = df_trans_a_copy[col_c_name].astype(str)
     s_d = df_trans_a_copy[col_d_name].astype(str)
 
-    # 1. Intereses Ganados: INTERES, INTERESES, INTERES 70 PLAZO FIJO AUSTRO AGOSTO
+    # 1. Intereses Ganados
     patron_interes = "INTERES|INTERESES|INTERÉS"
     mask_intereses = s_c.str.contains(patron_interes, case=False, na=False)
     total_intereses_a = df_trans_a_copy.loc[mask_intereses, "Valor"].sum()
 
-    # 2. Dentista: CALZAS, DENTAL, CONSULTA, CIRUJA, OPERACION, CONDUCTO
+    # 2. Dentista
     patron_dentista = "CALZAS|DENTAL|CONSULTA|CIRUJA|CIRUJANO|OPERACION|OPERACIÓN|CONDUCTO"
     mask_dentista = s_c.str.contains(patron_dentista, case=False, na=False) & ~mask_intereses
     total_dentista_a = df_trans_a_copy.loc[mask_dentista, "Valor"].sum()
 
-    # 3. Impuestos Importaciones: GUIA, ADUANA, IMPUESOS, IMPUESTOS
+    # 3. Impuestos Importaciones
     patron_impuestos = "GUIA|GUÍA|ADUANA|IMPUESOS|IMPUESTOS"
     mask_impuestos = s_c.str.contains(patron_impuestos, case=False, na=False) & ~mask_intereses & ~mask_dentista
     total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
 
-    # 4. Pago tarjetas: COSTO TARJETA, AMERICAN, VISA, MASTERCARD, MSTERCARD, AMEX, TRANSFERENCIA DIRECTA (solo si col D != Coop. Jardín Azuayo CJA)
+    # 4. Pago tarjetas
     patron_tarjetas_base = "COSTO TARJETA|AMERICAN|VISA|MASTERCARD|MSTERCARD|AMEX"
     mask_tarjetas_base = s_c.str.contains(patron_tarjetas_base, case=False, na=False)
     mask_directa = s_c.str.contains("TRANSFERENCIA DIRECTA", case=False, na=False)
@@ -273,8 +273,7 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     mask_tarjetas = mask_tarjetas_raw & ~mask_intereses & ~mask_dentista & ~mask_impuestos
     total_tarjetas_a = df_trans_a_copy.loc[mask_tarjetas, "Valor"].sum()
 
-    # 5. Inversiones: AHORRO, PROGRAMADO, JARDN AZUAYO, PRUEBA PRODUBANCO 1, FLEXI AHORRO, AZUAYO, FONDO AHORRO, PLAZO FIJO, PRUEBA 1; 
-    # y TRANSFERENCIA DIRECTA, PRUEBA, TRANSFERENCIA solo cuando col D == Coop. Jardín Azuayo CJA
+    # 5. Inversiones
     patron_inv_gen = "AHORRO|PROGRAMADO|JARDN AZUAYO|JARDÍN AZUAYO|PRUEBA PRODUBANCO 1|FLEXI AHORRO|AZUAYO|FONDO AHORRO|PLAZO FIJO|PRUEBA 1"
     mask_inv_gen = s_c.str.contains(patron_inv_gen, case=False, na=False)
 
@@ -285,11 +284,11 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     mask_inversiones = mask_inv_raw & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas
     total_inversiones_a = df_trans_a_copy.loc[mask_inversiones, "Valor"].sum()
 
-    # 6. Token: TOKEN
+    # 6. Token
     mask_token_c = s_c.str.contains("TOKEN", case=False, na=False) & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas & ~mask_inversiones
     total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
 
-    # 7. Gastos: PAGO, ADRIAN SALDO, PRUEBA (solo cuando col D == Banco de Guayaquil)
+    # 7. Gastos
     mask_guayaquil = s_d.str.contains("Banco de Guayaquil|GUAYAQUIL", case=False, na=False)
     patron_gastos_gen = "PAGO|ADRIAN SALDO|ADRIÁN SALDO"
     mask_gastos_gen = s_c.str.contains(patron_gastos_gen, case=False, na=False)
@@ -299,12 +298,12 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
     mask_gastos_a = mask_gastos_raw & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas & ~mask_inversiones & ~mask_token_c
     total_gastos_a = df_trans_a_copy.loc[mask_gastos_a, "Valor"].sum()
 
-    # 8. Deposito Garantia Amex: TARJETA DE CRDITO DEPSITO GARANTA
+    # 8. Deposito Garantia Amex
     patron_garantia = "TARJETA DE CRDITO DEPSITO GARANTA|DEPSITO GARANTA|DEPOSITO GARANTIA|GARANTIA|GARANTA"
     mask_garantia_a = s_c.str.contains(patron_garantia, case=False, na=False) & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas & ~mask_inversiones & ~mask_token_c & ~mask_gastos_a
     total_garantia_a = df_trans_a_copy.loc[mask_garantia_a, "Valor"].sum()
 
-    # 9. Otros: todo lo que no entre en las otras categorias
+    # 9. Otros
     mask_otros_a = ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_tarjetas & ~mask_inversiones & ~mask_token_c & ~mask_gastos_a & ~mask_garantia_a
     total_otros_a = df_trans_a_copy.loc[mask_otros_a, "Valor"].sum()
 
@@ -399,41 +398,38 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     s_c_j = df_trans_j_copy[col_c_name_j].astype(str)
     s_d_j = df_trans_j_copy[col_cuenta_j].astype(str)
 
-    # 1. Inversiones:
-    # - Celda de columna D tiene 7 caracteres
-    # - O columna C contiene: 6390 a banco del Austro, plazo fijo austro, austro futuro, austro futuro 1330, ahorro programado
+    # 1. Inversiones
     mask_eq7_j = s_d_j.str.strip().str.len() == 7
     patron_inv_j = "6390 a banco del Austro|plazo fijo austro|austro futuro 1330|austro futuro|ahorro programado"
     mask_inv_text_j = s_c_j.str.contains(patron_inv_j, case=False, na=False)
     mask_inversiones_j = mask_eq7_j | mask_inv_text_j
     total_inversiones_j = df_trans_j_copy.loc[mask_inversiones_j, "Valor"].sum()
 
-    # 2. Intereses Ganados: INTERES, INTERESES, interés, intereses
+    # 2. Intereses Ganados
     patron_interes_j = "INTERES|INTERESES|INTERÉS"
     mask_interes_j = s_c_j.str.contains(patron_interes_j, case=False, na=False)
     mask_intereses_ganados_j = mask_interes_j & ~mask_inversiones_j
     total_intereses_ganados_j = df_trans_j_copy.loc[mask_intereses_ganados_j, "Valor"].sum()
 
-    # 3. Dentista: CALZAS, DENTAL, CONSULTA, CIRUJA, OPERACION, CONDUCTO, Corona
+    # 3. Dentista
     patron_dentista_j = "CALZAS|DENTAL|CONSULTA|CIRUJA|CIRUJANO|OPERACION|OPERACIÓN|CONDUCTO|CORONA"
     mask_dentista_j = s_c_j.str.contains(patron_dentista_j, case=False, na=False)
     mask_dentista_final_j = mask_dentista_j & ~mask_inversiones_j & ~mask_intereses_ganados_j
     total_dentista_j = df_trans_j_copy.loc[mask_dentista_final_j, "Valor"].sum()
 
-    # 4. Gastos: compra, pago, recarga, Comprar
+    # 4. Gastos
     patron_gastos_j = "compra|pago|recarga|comprar"
     mask_gastos_j = s_c_j.str.contains(patron_gastos_j, case=False, na=False)
     mask_gastos_final_j = mask_gastos_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j
     total_gastos_j = df_trans_j_copy.loc[mask_gastos_final_j, "Valor"].sum()
 
-    # 5. Movimientos No Asignados:
-    # Adrián austro, austro, banco del Austro adrian, transferencia, Adrián Narváez, austro adrian, banco austro, austro futuro 66, jardín azuayo
+    # 5. Movimientos No Asignados
     patron_no_asignados_j = "Adrián austro|adrian austro|banco del Austro adrian|transferencia|Adrián Narváez|adrian narvaez|austro adrian|banco austro|austro futuro 66|jardín azuayo|jardin azuayo|austro"
     mask_no_asignados_raw_j = s_c_j.str.contains(patron_no_asignados_j, case=False, na=False)
     mask_no_asignados_j = mask_no_asignados_raw_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j
     total_no_asignados_j = df_trans_j_copy.loc[mask_no_asignados_j, "Valor"].sum()
 
-    # 6. Otros: todo lo que no entre en las otras categorias
+    # 6. Otros
     mask_otros_j = ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j & ~mask_no_asignados_j
     total_otros_j = df_trans_j_copy.loc[mask_otros_j, "Valor"].sum()
 
@@ -551,6 +547,9 @@ if banco_seleccionado == "Banco del Austro":
         key="filtro_austro",
     )
 
+    fecha_actual = pd.Timestamp.now()
+    ano_actual_real = fecha_actual.year
+
     if filtro_ano_austro == "Todos":
         total_kpi_retiros = df_retiros_a["Valor"].sum() if not df_retiros_a.empty else 0.0
         n_retiros_austro = len(df_retiros_a) if not df_retiros_a.empty else 0
@@ -558,7 +557,6 @@ if banco_seleccionado == "Banco del Austro":
 
         if not df_retiros_a.empty:
             min_fecha = df_retiros_a["Fecha_dt"].min()
-            fecha_actual = pd.Timestamp.now()
             dias_totales_rango = (fecha_actual - min_fecha).days
             dias_validos = dias_totales_rango if dias_totales_rango > 0 else 1
             kpi_retiro_dia = total_kpi_retiros / dias_validos
@@ -600,11 +598,19 @@ if banco_seleccionado == "Banco del Austro":
             total_kpi_retiros = df_retiros_f["Valor"].sum()
             n_retiros_austro = len(df_retiros_f)
             ticket_prom_austro = total_kpi_retiros / n_retiros_austro if n_retiros_austro > 0 else 0.0
-            kpi_retiro_dia = total_kpi_retiros / 365
-            frecuencia_dias_austro = 365 / n_retiros_austro if n_retiros_austro > 0 else 0.0
-            prom_mensual_austro = total_kpi_retiros / 12
-            meses_austro = 12.0
-            dias_validos = 365
+            
+            if ano_sel == ano_actual_real:
+                inicio_ano = pd.Timestamp(year=ano_sel, month=1, day=1)
+                dias_validos = (fecha_actual - inicio_ano).days + 1
+                dias_validos = max(dias_validos, 1)
+                meses_austro = dias_validos / 30.44
+            else:
+                dias_validos = 366 if (ano_sel % 4 == 0 and (ano_sel % 100 != 0 or ano_sel % 400 == 0)) else 365
+                meses_austro = 12.0
+
+            kpi_retiro_dia = total_kpi_retiros / dias_validos
+            frecuencia_dias_austro = dias_validos / n_retiros_austro if n_retiros_austro > 0 else 0.0
+            prom_mensual_austro = total_kpi_retiros / meses_austro
         else:
             total_kpi_retiros = 0.0
             n_retiros_austro = 0
@@ -738,6 +744,9 @@ elif banco_seleccionado == "Jardín Azuayo":
         key="filtro_jardin",
     )
 
+    fecha_actual = pd.Timestamp.now()
+    ano_actual_real = fecha_actual.year
+
     if filtro_ano_jardin == "Todos":
         total_kpi_retiros_j = df_retiros_j["Valor"].sum() if not df_retiros_j.empty else 0.0
         n_retiros_jardin = len(df_retiros_j) if not df_retiros_j.empty else 0
@@ -745,7 +754,6 @@ elif banco_seleccionado == "Jardín Azuayo":
 
         if not df_retiros_j.empty:
             min_fecha_j = df_retiros_j["Fecha_dt"].min()
-            fecha_actual = pd.Timestamp.now()
             dias_totales_j = (fecha_actual - min_fecha_j).days
             dias_validos_j = dias_totales_j if dias_totales_j > 0 else 1
             kpi_retiro_dia_j = total_kpi_retiros_j / dias_validos_j
@@ -782,11 +790,19 @@ elif banco_seleccionado == "Jardín Azuayo":
             total_kpi_retiros_j = df_retiros_fj["Valor"].sum()
             n_retiros_jardin = len(df_retiros_fj)
             ticket_prom_j = total_kpi_retiros_j / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
-            kpi_retiro_dia_j = total_kpi_retiros_j / 365
-            frecuencia_dias_j = 365 / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
-            prom_mensual_j = total_kpi_retiros_j / 12
-            meses_jardin = 12.0
-            dias_validos_j = 365
+            
+            if ano_sel_j == ano_actual_real:
+                inicio_ano = pd.Timestamp(year=ano_sel_j, month=1, day=1)
+                dias_validos_j = (fecha_actual - inicio_ano).days + 1
+                dias_validos_j = max(dias_validos_j, 1)
+                meses_jardin = dias_validos_j / 30.44
+            else:
+                dias_validos_j = 366 if (ano_sel_j % 4 == 0 and (ano_sel_j % 100 != 0 or ano_sel_j % 400 == 0)) else 365
+                meses_jardin = 12.0
+
+            kpi_retiro_dia_j = total_kpi_retiros_j / dias_validos_j
+            frecuencia_dias_j = dias_validos_j / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
+            prom_mensual_j = total_kpi_retiros_j / meses_jardin
         else:
             total_kpi_retiros_j = 0.0
             n_retiros_jardin = 0
@@ -939,6 +955,9 @@ else:
         key="filtro_todos",
     )
 
+    fecha_actual = pd.Timestamp.now()
+    ano_actual_real = fecha_actual.year
+
     if filtro_ano_todos == "Todos":
         total_retiros_a_f = df_retiros_a["Valor"].sum() if not df_retiros_a.empty else 0.0
         total_retiros_j_f = df_retiros_j["Valor"].sum() if not df_retiros_j.empty else 0.0
@@ -946,8 +965,6 @@ else:
 
         n_retiros_tot_t = len(df_retiros_todos) if not df_retiros_todos.empty else 0
         ticket_prom_t = total_kpi_retiros_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
-
-        fecha_actual = pd.Timestamp.now()
 
         if not df_retiros_a.empty:
             min_a = df_retiros_a["Fecha_dt"].min()
@@ -963,20 +980,24 @@ else:
         else:
             kpi_retiro_dia_j = 0.0
 
-        if not df_retiros_todos.empty:
-            min_fecha_t = df_retiros_todos["Fecha_dt"].min()
-            dias_totales_t = (fecha_actual - min_fecha_t).days if pd.notnull(min_fecha_t) else 1
+        # Fecha más antigua registrada entre ambos bancos para la ventana consolidada
+        fechas_minimas_todos = []
+        if not df_retiros_a.empty and pd.notnull(df_retiros_a["Fecha_dt"].min()):
+            fechas_minimas_todos.append(df_retiros_a["Fecha_dt"].min())
+        if not df_retiros_j.empty and pd.notnull(df_retiros_j["Fecha_dt"].min()):
+            fechas_minimas_todos.append(df_retiros_j["Fecha_dt"].min())
+
+        if fechas_minimas_todos:
+            min_fecha_consolidada = min(fechas_minimas_todos)
+            dias_totales_t = (fecha_actual - min_fecha_consolidada).days
             dias_validos_t = dias_totales_t if dias_totales_t > 0 else 1
-            kpi_retiro_dia_t = total_kpi_retiros_t / dias_validos_t
-            frecuencia_dias_t = dias_validos_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
-            meses_t = (dias_validos_t / 30.44) if dias_validos_t > 0 else 1.0
-            prom_mensual_t = total_kpi_retiros_t / meses_t
         else:
-            kpi_retiro_dia_t = 0.0
-            frecuencia_dias_t = 0.0
-            prom_mensual_t = 0.0
-            meses_t = 1.0
             dias_validos_t = 1
+
+        kpi_retiro_dia_t = total_kpi_retiros_t / dias_validos_t
+        frecuencia_dias_t = dias_validos_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
+        meses_t = (dias_validos_t / 30.44) if dias_validos_t > 0 else 1.0
+        prom_mensual_t = total_kpi_retiros_t / meses_t
 
         total_trans_a_f = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
         total_trans_j_f = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
@@ -1009,22 +1030,30 @@ else:
 
         df_retiros_fa = df_retiros_a[df_retiros_a["Año"] == ano_sel_t] if (not df_retiros_a.empty and "Año" in df_retiros_a.columns) else pd.DataFrame()
         total_retiros_a_f = df_retiros_fa["Valor"].sum() if not df_retiros_fa.empty else 0.0
-        kpi_retiro_dia_a = total_retiros_a_f / 365
 
         df_retiros_fj = df_retiros_j[df_retiros_j["Año"] == ano_sel_t] if (not df_retiros_j.empty and "Año" in df_retiros_j.columns) else pd.DataFrame()
         total_retiros_j_f = df_retiros_fj["Valor"].sum() if not df_retiros_fj.empty else 0.0
-        kpi_retiro_dia_j = total_retiros_j_f / 365
 
         total_kpi_retiros_t = total_retiros_a_f + total_retiros_j_f
-        kpi_retiro_dia_t = total_kpi_retiros_t / 365
+
+        if ano_sel_t == ano_actual_real:
+            inicio_ano = pd.Timestamp(year=ano_sel_t, month=1, day=1)
+            dias_validos_t = (fecha_actual - inicio_ano).days + 1
+            dias_validos_t = max(dias_validos_t, 1)
+            meses_t = dias_validos_t / 30.44
+        else:
+            dias_validos_t = 366 if (ano_sel_t % 4 == 0 and (ano_sel_t % 100 != 0 or ano_sel_t % 400 == 0)) else 365
+            meses_t = 12.0
+
+        kpi_retiro_dia_a = total_retiros_a_f / dias_validos_t
+        kpi_retiro_dia_j = total_retiros_j_f / dias_validos_t
+        kpi_retiro_dia_t = total_kpi_retiros_t / dias_validos_t
 
         df_retiros_todos_sel = df_retiros_todos[df_retiros_todos["Año"] == ano_sel_t] if (not df_retiros_todos.empty and "Año" in df_retiros_todos.columns) else pd.DataFrame()
         n_retiros_tot_t = len(df_retiros_todos_sel)
         ticket_prom_t = total_kpi_retiros_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
-        frecuencia_dias_t = 365 / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
-        prom_mensual_t = total_kpi_retiros_t / 12
-        meses_t = 12.0
-        dias_validos_t = 365
+        frecuencia_dias_t = dias_validos_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
+        prom_mensual_t = total_kpi_retiros_t / meses_t
 
         df_trans_fa = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel_t] if (not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns) else pd.DataFrame()
         total_trans_a_f = df_trans_fa["Valor"].sum() if not df_trans_fa.empty else 0.0
