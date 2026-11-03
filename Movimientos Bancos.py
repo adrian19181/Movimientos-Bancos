@@ -206,11 +206,15 @@ df_trans_fechas_a = pd.DataFrame()
 df_trans_clean_a = pd.DataFrame()
 df_trans_costo_a = pd.DataFrame()
 tabla_gastos_trans_a = pd.DataFrame(columns=["Tipo Gasto", "Valor Total"])
+
 total_tarjetas_a = 0.0
-total_impuestos_a = 0.0
-total_dentista_a = 0.0
-total_token_a = 0.0
 total_inversiones_a = 0.0
+total_intereses_a = 0.0
+total_dentista_a = 0.0
+total_impuestos_a = 0.0
+total_token_a = 0.0
+total_gastos_a = 0.0
+total_garantia_a = 0.0
 total_otros_a = 0.0
 
 if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
@@ -223,62 +227,76 @@ if not df_raw_trans_a.empty and "Valor" in df_raw_trans_a.columns:
         df_trans_a_copy["Año"] = df_trans_a_copy["Fecha_dt"].dt.year
         df_trans_fechas_a = df_trans_a_copy
 
-        # Filtrar Columna D ("Institución")
         col_d_name = "Institución" if "Institución" in df_trans_a_copy.columns else df_trans_a_copy.columns[3]
         mask_token = df_trans_a_copy[col_d_name].astype(str).str.strip().str.lower() == "token"
         df_trans_costo_a = df_trans_a_copy[~mask_token].copy()
 
-    # Clasificación de Gastos en Columna C (Motivo/Descripción)
     col_c_name = df_trans_a_copy.columns[2] if len(df_trans_a_copy.columns) > 2 else "Descripción"
+    col_d_name = df_trans_a_copy.columns[3] if len(df_trans_a_copy.columns) > 3 else "Institución"
 
-    # Transacción especial (14/8/2026, 190.41, TRANSFERENCIA DIRECTA Produbanco)
-    mask_especial = (
-        df_trans_a_copy["Fecha"].astype(str).str.contains("14/8/2026|14/08/2026", na=False) |
-        (df_trans_a_copy["Fecha_dt"] == "2026-08-14")
-    ) & (df_trans_a_copy["Valor"].round(2) == 190.41)
+    s_c = df_trans_a_copy[col_c_name].astype(str)
+    s_d = df_trans_a_copy[col_d_name].astype(str)
+
+    # 1. Pago tarjetas: COSTO TARJETA, AMERICAN, VISA, MASTERCARD, MSTERCARD, AMEX, TRANSFERENCIA DIRECTA (solo si col D != Coop. Jardín Azuayo CJA)
+    patron_tarjetas_base = "COSTO TARJETA|AMERICAN|VISA|MASTERCARD|MSTERCARD|AMEX"
+    mask_tarjetas_base = s_c.str.contains(patron_tarjetas_base, case=False, na=False)
+    mask_directa = s_c.str.contains("TRANSFERENCIA DIRECTA", case=False, na=False)
+    mask_cja = s_d.str.contains("Coop. Jardín Azuayo CJA|JARDIN AZUAYO|JARDÍN AZUAYO", case=False, na=False)
+    mask_directa_not_cja = mask_directa & ~mask_cja
     
-    # 1. Pago tarjetas (excluyendo 'TARJETA DE CRDITO DEPSITO GARANTA' e incluyendo la transacción especial del 14/8/2026)
-    patron_tarjetas = "TARJETA|MASTERCARD|VISA|AMERICAN|AMEX"
-    patron_ignorar = "GARANTA|GARANTIA|DEPSITO GARANTA|DEPOSITO GARANTIA|TARJETA DE CRDITO DEPSITO GARANTA"
-    mask_tarjetas_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_tarjetas, case=False, na=False)
-    mask_ignorar = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_ignorar, case=False, na=False)
-    mask_tarjetas = (mask_tarjetas_raw & ~mask_ignorar) | mask_especial
+    mask_tarjetas = mask_tarjetas_base | mask_directa_not_cja
     total_tarjetas_a = df_trans_a_copy.loc[mask_tarjetas, "Valor"].sum()
 
-    # 2. Impuestos Importaciones (excluyendo Pago tarjetas)
-    patron_impuestos = "GUIA|ADUANA"
-    mask_impuestos_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_impuestos, case=False, na=False)
-    mask_impuestos = mask_impuestos_raw & ~mask_tarjetas
-    total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
-
-    # 3. Dentista (excluyendo Pago tarjetas e Impuestos)
-    patron_dentista = "TRATAMIENTO DE CONDUCTO|CALZAS|CONSULTA|Dentista|CIRUJA|DENTAL|OPERACION"
-    mask_dentista_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_dentista, case=False, na=False)
-    mask_dentista = mask_dentista_raw & ~mask_tarjetas & ~mask_impuestos
-    total_dentista_a = df_trans_a_copy.loc[mask_dentista, "Valor"].sum()
-
-    # 4. Token (excluyendo Pago tarjetas, Impuestos y Dentista)
-    patron_token_c = "TOKEN"
-    mask_token_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_token_c, case=False, na=False)
-    mask_token_c = mask_token_raw & ~mask_tarjetas & ~mask_impuestos & ~mask_dentista
-    total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
-
-    # 5. Inversiones (excluyendo la transacción especial del 14/8/2026 y categorías anteriores)
-    patron_inversiones = "PROGRAMADO|DIRECTA|PRUEBA|JARDN AZUAYO|JARDÍN AZUAYO|JARDN|JARDÍN|PRUEBA PRODUBANCO 1|TRANSFERENCIA ADRIAN 800|FONDO AHORRO|FLEXI AHORRO"
-    mask_inversiones_raw = df_trans_a_copy[col_c_name].astype(str).str.contains(patron_inversiones, case=False, na=False)
-    mask_inversiones = mask_inversiones_raw & ~mask_especial & ~mask_tarjetas & ~mask_impuestos & ~mask_dentista & ~mask_token_c
+    # 2. Inversiones: AHORRO, PROGRAMADO, TRANSFERENCIA DIRECTA (solo cuando col D == Coop. Jardín Azuayo CJA), JARDN AZUAYO, PRUEBA PRODUBANCO 1, FLEXI AHORRO, PRUEBA, AZUAYO, TRANSFERENCIA, FONDO AHORRO, PLAZO FIJO
+    patron_inv_base = "AHORRO|PROGRAMADO|JARDN AZUAYO|JARDÍN AZUAYO|JARDN|JARDÍN|PRUEBA PRODUBANCO 1|FLEXI AHORRO|PRUEBA|AZUAYO|TRANSFERENCIA|FONDO AHORRO|PLAZO FIJO"
+    mask_inv_base = s_c.str.contains(patron_inv_base, case=False, na=False)
+    mask_directa_cja = mask_directa & mask_cja
+    
+    mask_inversiones = (mask_inv_base | mask_directa_cja) & ~mask_tarjetas
     total_inversiones_a = df_trans_a_copy.loc[mask_inversiones, "Valor"].sum()
 
-    # 6. Otros (excluyendo categorías anteriores)
-    mask_otros_a = ~mask_tarjetas & ~mask_impuestos & ~mask_dentista & ~mask_token_c & ~mask_inversiones
+    # 3. Intereses Ganados: INTERES, INTERESES
+    patron_interes = "INTERES|INTERESES|INTERÉS"
+    mask_intereses = s_c.str.contains(patron_interes, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones
+    total_intereses_a = df_trans_a_copy.loc[mask_intereses, "Valor"].sum()
+
+    # 4. Dentista: CALZAS, DENTAL, CONSULTA, CIRUJA, OPERACION, CONDUCTO
+    patron_dentista = "CALZAS|DENTAL|CONSULTA|CIRUJA|CIRUJANO|OPERACION|OPERACIÓN|CONDUCTO"
+    mask_dentista = s_c.str.contains(patron_dentista, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses
+    total_dentista_a = df_trans_a_copy.loc[mask_dentista, "Valor"].sum()
+
+    # 5. Impuestos Importaciones: GUIA, ADUANA, IMPUESOS, IMPUESTOS
+    patron_impuestos = "GUIA|GUÍA|ADUANA|IMPUESOS|IMPUESTOS"
+    mask_impuestos = s_c.str.contains(patron_impuestos, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista
+    total_impuestos_a = df_trans_a_copy.loc[mask_impuestos, "Valor"].sum()
+
+    # 6. Token: TOKEN
+    mask_token_c = s_c.str.contains("TOKEN", case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos
+    total_token_a = df_trans_a_copy.loc[mask_token_c, "Valor"].sum()
+
+    # 7. Gastos: PAGO, ADRIAN SALDO
+    patron_gastos_a = "PAGO|ADRIAN SALDO|ADRIÁN SALDO"
+    mask_gastos_a = s_c.str.contains(patron_gastos_a, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_token_c
+    total_gastos_a = df_trans_a_copy.loc[mask_gastos_a, "Valor"].sum()
+
+    # 8. Deposito Garantia Amex: TARJETA DE CRDITO DEPSITO GARANTA
+    patron_garantia = "TARJETA DE CRDITO DEPSITO GARANTA|DEPSITO GARANTA|DEPOSITO GARANTIA|GARANTIA|GARANTA"
+    mask_garantia_a = s_c.str.contains(patron_garantia, case=False, na=False) & ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_token_c & ~mask_gastos_a
+    total_garantia_a = df_trans_a_copy.loc[mask_garantia_a, "Valor"].sum()
+
+    # 9. Otros: todo lo que no entre en las otras categorias
+    mask_otros_a = ~mask_tarjetas & ~mask_inversiones & ~mask_intereses & ~mask_dentista & ~mask_impuestos & ~mask_token_c & ~mask_gastos_a & ~mask_garantia_a
     total_otros_a = df_trans_a_copy.loc[mask_otros_a, "Valor"].sum()
 
     tabla_gastos_trans_a = pd.DataFrame([
-        {"Tipo Gasto": "Pago<br>tarjetas", "Valor Total": total_tarjetas_a},
-        {"Tipo Gasto": "Impuestos<br>Importaciones", "Valor Total": total_impuestos_a},
-        {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_a},
-        {"Tipo Gasto": "Token", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Pago tarjetas", "Valor Total": total_tarjetas_a},
         {"Tipo Gasto": "Inversiones", "Valor Total": total_inversiones_a},
+        {"Tipo Gasto": "Intereses Ganados", "Valor Total": total_intereses_a},
+        {"Tipo Gasto": "Dentista", "Valor Total": total_dentista_a},
+        {"Tipo Gasto": "Impuestos Importaciones", "Valor Total": total_impuestos_a},
+        {"Tipo Gasto": "Token", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Gastos", "Valor Total": total_gastos_a},
+        {"Tipo Gasto": "Deposito Garantia Amex", "Valor Total": total_garantia_a},
         {"Tipo Gasto": "Otros", "Valor Total": total_otros_a}
     ])
 
@@ -333,6 +351,7 @@ df_raw_trans_j = obtener_hoja(hojas_jardin, "Transferencias Interbancarias")
 df_trans_fechas_j = pd.DataFrame()
 df_trans_costo_j = pd.DataFrame()
 tabla_gastos_trans_j = pd.DataFrame(columns=["Tipo Gasto", "Valor Total"])
+
 total_inversiones_j = 0.0
 total_intereses_ganados_j = 0.0
 total_dentista_j = 0.0
@@ -359,8 +378,6 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     mask_gt7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() > 7
 
     # Clasificación Inversiones
-    # 1) Columna D == 7 caracteres
-    # 2) Columna D > 7 caracteres y Columna C contiene palabras clave de Austro / Jardín / Adrián / transferencia o está vacía
     mask_eq7_j = df_trans_j_copy[col_cuenta_j].astype(str).str.strip().str.len() == 7
     patron_inv_extra_j = "6390 a banco del Austro|plazo fijo austro|jardín azuayo|jardin azuayo|Adrián Narváez|adrian narvaez|Adrián austro|adrian austro|banco austro|austro futuro|austro|transferencia"
     mask_vacia_j = df_trans_j_copy[col_c_name_j].isna() | (df_trans_j_copy[col_c_name_j].astype(str).str.strip() == "") | (df_trans_j_copy[col_c_name_j].astype(str).str.strip().str.lower() == "nan")
@@ -368,25 +385,25 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     mask_inversiones_j = mask_eq7_j | (mask_gt7_j & mask_inv_text_j)
     total_inversiones_j = df_trans_j_copy.loc[mask_inversiones_j, "Valor"].sum()
 
-    # Clasificación Intereses Ganados (Columna D > 7 caracteres y Columna C contiene interés / intereses)
+    # Clasificación Intereses Ganados
     patron_interes_j = "INTERÉS|INTERESES|INTERES"
     mask_interes_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_interes_j, case=False, na=False)
     mask_intereses_ganados_j = mask_gt7_j & mask_interes_j & ~mask_inversiones_j
     total_intereses_ganados_j = df_trans_j_copy.loc[mask_intereses_ganados_j, "Valor"].sum()
 
-    # Clasificación Dentista (Columna D > 7 caracteres y Columna C contiene Corona Adrián / Calza / Calzas / Dentista)
+    # Clasificación Dentista
     patron_dentista_j = "Corona Adrián|Corona Adrian|Calza|Calzas|Dentista"
     mask_dentista_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_dentista_j, case=False, na=False)
     mask_dentista_final_j = mask_gt7_j & mask_dentista_j & ~mask_inversiones_j & ~mask_intereses_ganados_j
     total_dentista_j = df_trans_j_copy.loc[mask_dentista_final_j, "Valor"].sum()
 
-    # Clasificación Gastos (Columna D > 7 caracteres y Columna C contiene compra / pago / recarga / Comprar)
+    # Clasificación Gastos
     patron_gastos_j = "compra|pago|recarga|Comprar"
     mask_gastos_j = df_trans_j_copy[col_c_name_j].astype(str).str.contains(patron_gastos_j, case=False, na=False)
     mask_gastos_final_j = mask_gt7_j & mask_gastos_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j
     total_gastos_j = df_trans_j_copy.loc[mask_gastos_final_j, "Valor"].sum()
 
-    # Clasificación Otros (Columna D > 7 caracteres no clasificados previamente)
+    # Clasificación Otros
     mask_otros_j = mask_gt7_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j
     total_otros_j = df_trans_j_copy.loc[mask_otros_j, "Valor"].sum()
 
@@ -750,14 +767,15 @@ else:
     df_trans_todos = pd.concat([df_trans_fechas_a, df_trans_fechas_j], ignore_index=True) if not (df_trans_fechas_a.empty and df_trans_fechas_j.empty) else pd.DataFrame()
 
     tabla_gastos_trans_todos = pd.DataFrame([
-        {"Tipo Gasto": "Inversiones<br>(Austro,<br>Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
-        {"Tipo Gasto": "Pago<br>tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
-        {"Tipo Gasto": "Impuestos<br>Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
-        {"Tipo Gasto": "Dentista<br>(Austro,<br>Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
-        {"Tipo Gasto": "Token<br><br>(Austro)", "Valor Total": total_token_a},
-        {"Tipo Gasto": "Intereses<br>Ganados<br>(Jardín)", "Valor Total": total_intereses_ganados_j},
-        {"Tipo Gasto": "Gastos<br><br>(Jardín)", "Valor Total": total_gastos_j},
-        {"Tipo Gasto": "Otros<br>(Austro,<br>Jardín)", "Valor Total": total_otros_a + total_otros_j}
+        {"Tipo Gasto": "Pago tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
+        {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
+        {"Tipo Gasto": "Intereses Ganados<br>(Austro, Jardín)", "Valor Total": total_intereses_a + total_intereses_ganados_j},
+        {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
+        {"Tipo Gasto": "Impuestos Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
+        {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
+        {"Tipo Gasto": "Gastos<br>(Austro, Jardín)", "Valor Total": total_gastos_a + total_gastos_j},
+        {"Tipo Gasto": "Deposito Garantia Amex<br>(Austro)", "Valor Total": total_garantia_a},
+        {"Tipo Gasto": "Otros<br>(Austro, Jardín)", "Valor Total": total_otros_a + total_otros_j}
     ])
 
     tabla_trans_todos_anos = (
