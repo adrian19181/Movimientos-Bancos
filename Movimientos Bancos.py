@@ -558,8 +558,8 @@ if banco_seleccionado == "Banco del Austro":
 
         if not df_retiros_a.empty:
             min_fecha = df_retiros_a["Fecha_dt"].min()
-            max_fecha = df_retiros_a["Fecha_dt"].max()
-            dias_totales_rango = (max_fecha - min_fecha).days if pd.notnull(min_fecha) and pd.notnull(max_fecha) else 1
+            fecha_actual = pd.Timestamp.now()
+            dias_totales_rango = (fecha_actual - min_fecha).days
             dias_validos = dias_totales_rango if dias_totales_rango > 0 else 1
             kpi_retiro_dia = total_kpi_retiros / dias_validos
             frecuencia_dias_austro = dias_validos / n_retiros_austro if n_retiros_austro > 0 else 0.0
@@ -647,7 +647,7 @@ if banco_seleccionado == "Banco del Austro":
     txt_det_costo_trans = f"Nº Transferencias con Costo: {n_trans_costo_a:,} | Período: {anos_periodo_trans:.2f} años"
 
     ayuda_total_retiros = "Suma total del dinero en efectivo retirado en este período."
-    ayuda_retiro_dia = "Frecuencia: Cada cuántos días haces un retiro (días ÷ retiros). Retiro/día: Gasto diario de efectivo."
+    ayuda_retiro_dia = "Frecuencia: Cada cuántos días haces un retiro (días hasta hoy ÷ retiros). Retiro/día: Gasto diario de efectivo."
 
     col1, col2 = st.columns(2)
     with col1:
@@ -662,9 +662,9 @@ if banco_seleccionado == "Banco del Austro":
     with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
         st.markdown("""
         * **Monto promedio por retiro:** Se obtiene dividiendo la suma total de dinero retirado para el número total de registros de retiro ($Total ÷ Retiros).
-        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados ($Total ÷ Meses).
+        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados desde el primer retiro hasta hoy ($Total ÷ Meses).
         * **Frecuencia entre retiros:** Indica cada cuántos días realizas un retiro ($Días ÷ Retiros).
-        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días).
+        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días transcurridos hasta hoy).
         """)
 
 # ==============================================================================
@@ -745,8 +745,8 @@ elif banco_seleccionado == "Jardín Azuayo":
 
         if not df_retiros_j.empty:
             min_fecha_j = df_retiros_j["Fecha_dt"].min()
-            max_fecha_j = df_retiros_j["Fecha_dt"].max()
-            dias_totales_j = (max_fecha_j - min_fecha_j).days if pd.notnull(min_fecha_j) and pd.notnull(max_fecha_j) else 1
+            fecha_actual = pd.Timestamp.now()
+            dias_totales_j = (fecha_actual - min_fecha_j).days
             dias_validos_j = dias_totales_j if dias_totales_j > 0 else 1
             kpi_retiro_dia_j = total_kpi_retiros_j / dias_validos_j
             frecuencia_dias_j = dias_validos_j / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
@@ -824,7 +824,7 @@ elif banco_seleccionado == "Jardín Azuayo":
     txt_det_costo_trans_j = f"Nº Transferencias con Costo: {n_trans_costo_j:,} | Período: {anos_periodo_trans_j:.2f} años"
 
     ayuda_total_retiros_j = "Suma total del dinero en efectivo retirado en este período."
-    ayuda_retiro_dia_j = "Frecuencia: Cada cuántos días haces un retiro (días ÷ retiros). Retiro/día: Gasto diario de efectivo."
+    ayuda_retiro_dia_j = "Frecuencia: Cada cuántos días haces un retiro (días hasta hoy ÷ retiros). Retiro/día: Gasto diario de efectivo."
 
     col1_j, col2_j = st.columns(2)
     with col1_j:
@@ -837,9 +837,9 @@ elif banco_seleccionado == "Jardín Azuayo":
     with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
         st.markdown("""
         * **Monto promedio por retiro:** Se obtiene dividiendo la suma total de dinero retirado para el número total de registros de retiro ($Total ÷ Retiros).
-        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados ($Total ÷ Meses).
+        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados desde el primer retiro hasta hoy ($Total ÷ Meses).
         * **Frecuencia entre retiros:** Indica cada cuántos días realizas un retiro ($Días ÷ Retiros).
-        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días).
+        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días transcurridos hasta hoy).
         """)
 
 # ==============================================================================
@@ -947,26 +947,25 @@ else:
         n_retiros_tot_t = len(df_retiros_todos) if not df_retiros_todos.empty else 0
         ticket_prom_t = total_kpi_retiros_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
 
+        fecha_actual = pd.Timestamp.now()
+
         if not df_retiros_a.empty:
             min_a = df_retiros_a["Fecha_dt"].min()
-            max_a = df_retiros_a["Fecha_dt"].max()
-            dias_a = (max_a - min_a).days if pd.notnull(min_a) and pd.notnull(max_a) else 1
+            dias_a = (fecha_actual - min_a).days if pd.notnull(min_a) else 1
             kpi_retiro_dia_a = total_retiros_a_f / (dias_a if dias_a > 0 else 1)
         else:
             kpi_retiro_dia_a = 0.0
 
         if not df_retiros_j.empty:
             min_j = df_retiros_j["Fecha_dt"].min()
-            max_j = df_retiros_j["Fecha_dt"].max()
-            dias_j = (max_j - min_j).days if pd.notnull(min_j) and pd.notnull(max_j) else 1
+            dias_j = (fecha_actual - min_j).days if pd.notnull(min_j) else 1
             kpi_retiro_dia_j = total_retiros_j_f / (dias_j if dias_j > 0 else 1)
         else:
             kpi_retiro_dia_j = 0.0
 
         if not df_retiros_todos.empty:
             min_fecha_t = df_retiros_todos["Fecha_dt"].min()
-            max_fecha_t = df_retiros_todos["Fecha_dt"].max()
-            dias_totales_t = (max_fecha_t - min_fecha_t).days if pd.notnull(min_fecha_t) and pd.notnull(max_fecha_t) else 1
+            dias_totales_t = (fecha_actual - min_fecha_t).days if pd.notnull(min_fecha_t) else 1
             dias_validos_t = dias_totales_t if dias_totales_t > 0 else 1
             kpi_retiro_dia_t = total_kpi_retiros_t / dias_validos_t
             frecuencia_dias_t = dias_validos_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
@@ -1063,7 +1062,7 @@ else:
     txt_det_trans = f"Austro: ${total_trans_a_f:,.2f} | Jardín: ${total_trans_j_f:,.2f}"
 
     ayuda_total_retiros_t = "Suma total de retiros en efectivo consolidados de ambas entidades."
-    ayuda_retiro_dia_t = "Frecuencia: Cada cuántos días haces un retiro (días ÷ retiros). Retiro/día: Gasto diario de efectivo."
+    ayuda_retiro_dia_t = "Frecuencia: Cada cuántos días haces un retiro (días hasta hoy ÷ retiros). Retiro/día: Gasto diario de efectivo."
 
     n_trans_costo_a_det = len(df_trans_costo_a[df_trans_costo_a["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns) else (len(df_trans_costo_a) if not df_trans_costo_a.empty else 0)
     n_trans_costo_j_det = len(df_trans_costo_j[df_trans_costo_j["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_j.empty and "Año" in df_trans_costo_j.columns) else (len(df_trans_costo_j) if not df_trans_costo_j.empty else 0)
@@ -1085,9 +1084,9 @@ else:
     with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
         st.markdown("""
         * **Monto promedio por retiro:** Se obtiene dividiendo la suma total de dinero retirado para el número total de registros de retiro ($Total ÷ Retiros).
-        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados ($Total ÷ Meses).
+        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados desde el primer retiro hasta hoy ($Total ÷ Meses).
         * **Frecuencia entre retiros:** Indica cada cuántos días realizas un retiro ($Días ÷ Retiros).
-        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días).
+        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días transcurridos hasta hoy).
         """)
 
 if __name__ == "__main__":
