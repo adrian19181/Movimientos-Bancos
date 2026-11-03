@@ -417,8 +417,8 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
     total_gastos_j = df_trans_j_copy.loc[mask_gastos_final_j, "Valor"].sum()
 
     # 5. Movimientos No Asignados:
-    # Adrián austro, austro, banco del Austro adrian, transferencia, Adrián Narváez, austro adrian, banco austro, austro futuro 66
-    patron_no_asignados_j = "Adrián austro|adrian austro|banco del Austro adrian|transferencia|Adrián Narváez|adrian narvaez|austro adrian|banco austro|austro futuro 66|austro"
+    # Adrián austro, austro, banco del Austro adrian, transferencia, Adrián Narváez, austro adrian, banco austro, austro futuro 66, jardín azuayo
+    patron_no_asignados_j = "Adrián austro|adrian austro|banco del Austro adrian|transferencia|Adrián Narváez|adrian narvaez|austro adrian|banco austro|austro futuro 66|jardín azuayo|jardin azuayo|austro"
     mask_no_asignados_raw_j = s_c_j.str.contains(patron_no_asignados_j, case=False, na=False)
     mask_no_asignados_j = mask_no_asignados_raw_j & ~mask_inversiones_j & ~mask_intereses_ganados_j & ~mask_dentista_final_j & ~mask_gastos_final_j
     total_no_asignados_j = df_trans_j_copy.loc[mask_no_asignados_j, "Valor"].sum()
