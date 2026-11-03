@@ -563,11 +563,14 @@ if banco_seleccionado == "Banco del Austro":
             dias_validos = dias_totales_rango if dias_totales_rango > 0 else 1
             kpi_retiro_dia = total_kpi_retiros / dias_validos
             frecuencia_dias_austro = dias_validos / n_retiros_austro if n_retiros_austro > 0 else 0.0
-            prom_mensual_austro = (total_kpi_retiros / (dias_validos / 30.44)) if dias_validos > 0 else 0.0
+            meses_austro = (dias_validos / 30.44) if dias_validos > 0 else 1.0
+            prom_mensual_austro = total_kpi_retiros / meses_austro
         else:
             kpi_retiro_dia = 0.0
             frecuencia_dias_austro = 0.0
             prom_mensual_austro = 0.0
+            meses_austro = 1.0
+            dias_validos = 1
 
         total_kpi_trans = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
         n_trans_costo_a = len(df_trans_costo_a) if not df_trans_costo_a.empty else 0
@@ -600,6 +603,8 @@ if banco_seleccionado == "Banco del Austro":
             kpi_retiro_dia = total_kpi_retiros / 365
             frecuencia_dias_austro = 365 / n_retiros_austro if n_retiros_austro > 0 else 0.0
             prom_mensual_austro = total_kpi_retiros / 12
+            meses_austro = 12.0
+            dias_validos = 365
         else:
             total_kpi_retiros = 0.0
             n_retiros_austro = 0
@@ -607,6 +612,8 @@ if banco_seleccionado == "Banco del Austro":
             kpi_retiro_dia = 0.0
             frecuencia_dias_austro = 0.0
             prom_mensual_austro = 0.0
+            meses_austro = 12.0
+            dias_validos = 365
 
         df_trans_fa_sel = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel] if not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns else pd.DataFrame()
         total_kpi_trans = df_trans_fa_sel["Valor"].sum() if not df_trans_fa_sel.empty else 0.0
@@ -635,12 +642,12 @@ if banco_seleccionado == "Banco del Austro":
         lbl_compras = f"Total Compras por Internet ({filtro_ano_austro})"
         lbl_swift = f"Total Swift ({filtro_ano_austro})"
 
-    txt_det_total_retiros = f"Monto promedio por retiro: ${ticket_prom_austro:,.2f}<br>Gasto promedio mensual: ${prom_mensual_austro:,.2f}"
-    txt_det_retiro_dia = f"Frecuencia entre retiros: cada {frecuencia_dias_austro:.1f} días ({n_retiros_austro:,} retiros)"
+    txt_det_total_retiros = f"Monto prom. por retiro: ${ticket_prom_austro:,.2f} (${total_kpi_retiros:,.2f} ÷ {n_retiros_austro:,} retiros)<br>Gasto prom. mensual: ${prom_mensual_austro:,.2f} (${total_kpi_retiros:,.2f} ÷ {meses_austro:.1f} meses)"
+    txt_det_retiro_dia = f"Frecuencia entre retiros: cada {frecuencia_dias_austro:.1f} días ({dias_validos:,} días ÷ {n_retiros_austro:,} retiros)"
     txt_det_costo_trans = f"Nº Transferencias con Costo: {n_trans_costo_a:,} | Período: {anos_periodo_trans:.2f} años"
 
     ayuda_total_retiros = "Suma total del dinero en efectivo retirado en este período."
-    ayuda_retiro_dia = "Frecuencia: Cada cuántos días haces un retiro. Retiro/día: Lo que gastas en efectivo dividido por día."
+    ayuda_retiro_dia = "Frecuencia: Cada cuántos días haces un retiro (días ÷ retiros). Retiro/día: Gasto diario de efectivo."
 
     col1, col2 = st.columns(2)
     with col1:
@@ -654,10 +661,10 @@ if banco_seleccionado == "Banco del Austro":
 
     with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
         st.markdown("""
-        * **Monto promedio por retiro:** Es el dinero que sacas en una sola transacción. Te indica si estás realizando extracciones grandes o pequeñas.
-        * **Frecuencia entre retiros:** Indica cada cuántos días vuelves a sacar dinero. Si el número de días es bajo (ej. cada 2 o 3 días), significa que sacas efectivo muy seguido.
-        * **Gasto promedio mensual:** Proyección del dinero en efectivo que usas al mes para comparar contra tu presupuesto.
-        * **Retiro por día:** El consumo promedio diario de efectivo.
+        * **Monto promedio por retiro:** Se obtiene dividiendo la suma total de dinero retirado para el número total de registros de retiro ($Total ÷ Retiros).
+        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados ($Total ÷ Meses).
+        * **Frecuencia entre retiros:** Indica cada cuántos días realizas un retiro ($Días ÷ Retiros).
+        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días).
         """)
 
 # ==============================================================================
@@ -743,11 +750,14 @@ elif banco_seleccionado == "Jardín Azuayo":
             dias_validos_j = dias_totales_j if dias_totales_j > 0 else 1
             kpi_retiro_dia_j = total_kpi_retiros_j / dias_validos_j
             frecuencia_dias_j = dias_validos_j / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
-            prom_mensual_j = (total_kpi_retiros_j / (dias_validos_j / 30.44)) if dias_validos_j > 0 else 0.0
+            meses_jardin = (dias_validos_j / 30.44) if dias_validos_j > 0 else 1.0
+            prom_mensual_j = total_kpi_retiros_j / meses_jardin
         else:
             kpi_retiro_dia_j = 0.0
             frecuencia_dias_j = 0.0
             prom_mensual_j = 0.0
+            meses_jardin = 1.0
+            dias_validos_j = 1
 
         total_kpi_trans_j = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
         n_trans_costo_j = len(df_trans_costo_j) if not df_trans_costo_j.empty else 0
@@ -775,6 +785,8 @@ elif banco_seleccionado == "Jardín Azuayo":
             kpi_retiro_dia_j = total_kpi_retiros_j / 365
             frecuencia_dias_j = 365 / n_retiros_jardin if n_retiros_jardin > 0 else 0.0
             prom_mensual_j = total_kpi_retiros_j / 12
+            meses_jardin = 12.0
+            dias_validos_j = 365
         else:
             total_kpi_retiros_j = 0.0
             n_retiros_jardin = 0
@@ -782,6 +794,8 @@ elif banco_seleccionado == "Jardín Azuayo":
             kpi_retiro_dia_j = 0.0
             frecuencia_dias_j = 0.0
             prom_mensual_j = 0.0
+            meses_jardin = 12.0
+            dias_validos_j = 365
 
         df_trans_fj_sel = df_trans_fechas_j[df_trans_fechas_j["Año"] == ano_sel_j] if not df_trans_fechas_j.empty and "Año" in df_trans_fechas_j.columns else pd.DataFrame()
         total_kpi_trans_j = df_trans_fj_sel["Valor"].sum() if not df_trans_fj_sel.empty else 0.0
@@ -805,12 +819,12 @@ elif banco_seleccionado == "Jardín Azuayo":
         lbl_trans_j = f"Total Transferencias ({filtro_ano_jardin})"
         lbl_costo_trans_j = f"Costo Total Transferencias ({filtro_ano_jardin})"
 
-    txt_det_total_retiros_j = f"Monto promedio por retiro: ${ticket_prom_j:,.2f}<br>Gasto promedio mensual: ${prom_mensual_j:,.2f}"
-    txt_det_retiro_dia_j = f"Frecuencia entre retiros: cada {frecuencia_dias_j:.1f} días ({n_retiros_jardin:,} retiros)"
+    txt_det_total_retiros_j = f"Monto prom. por retiro: ${ticket_prom_j:,.2f} (${total_kpi_retiros_j:,.2f} ÷ {n_retiros_jardin:,} retiros)<br>Gasto prom. mensual: ${prom_mensual_j:,.2f} (${total_kpi_retiros_j:,.2f} ÷ {meses_jardin:.1f} meses)"
+    txt_det_retiro_dia_j = f"Frecuencia entre retiros: cada {frecuencia_dias_j:.1f} días ({dias_validos_j:,} días ÷ {n_retiros_jardin:,} retiros)"
     txt_det_costo_trans_j = f"Nº Transferencias con Costo: {n_trans_costo_j:,} | Período: {anos_periodo_trans_j:.2f} años"
 
     ayuda_total_retiros_j = "Suma total del dinero en efectivo retirado en este período."
-    ayuda_retiro_dia_j = "Frecuencia: Cada cuántos días haces un retiro. Retiro/día: Lo que gastas en efectivo dividido por día."
+    ayuda_retiro_dia_j = "Frecuencia: Cada cuántos días haces un retiro (días ÷ retiros). Retiro/día: Gasto diario de efectivo."
 
     col1_j, col2_j = st.columns(2)
     with col1_j:
@@ -822,10 +836,10 @@ elif banco_seleccionado == "Jardín Azuayo":
 
     with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
         st.markdown("""
-        * **Monto promedio por retiro:** Es el dinero que sacas en una sola transacción. Te indica si estás realizando extracciones grandes o pequeñas.
-        * **Frecuencia entre retiros:** Indica cada cuántos días vuelves a sacar dinero. Si el número de días es bajo (ej. cada 2 o 3 días), significa que sacas efectivo muy seguido.
-        * **Gasto promedio mensual:** Proyección del dinero en efectivo que usas al mes para comparar contra tu presupuesto.
-        * **Retiro por día:** El consumo promedio diario de efectivo.
+        * **Monto promedio por retiro:** Se obtiene dividiendo la suma total de dinero retirado para el número total de registros de retiro ($Total ÷ Retiros).
+        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados ($Total ÷ Meses).
+        * **Frecuencia entre retiros:** Indica cada cuántos días realizas un retiro ($Días ÷ Retiros).
+        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días).
         """)
 
 # ==============================================================================
@@ -956,11 +970,14 @@ else:
             dias_validos_t = dias_totales_t if dias_totales_t > 0 else 1
             kpi_retiro_dia_t = total_kpi_retiros_t / dias_validos_t
             frecuencia_dias_t = dias_validos_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
-            prom_mensual_t = (total_kpi_retiros_t / (dias_validos_t / 30.44)) if dias_validos_t > 0 else 0.0
+            meses_t = (dias_validos_t / 30.44) if dias_validos_t > 0 else 1.0
+            prom_mensual_t = total_kpi_retiros_t / meses_t
         else:
             kpi_retiro_dia_t = 0.0
             frecuencia_dias_t = 0.0
             prom_mensual_t = 0.0
+            meses_t = 1.0
+            dias_validos_t = 1
 
         total_trans_a_f = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
         total_trans_j_f = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
@@ -1007,6 +1024,8 @@ else:
         ticket_prom_t = total_kpi_retiros_t / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
         frecuencia_dias_t = 365 / n_retiros_tot_t if n_retiros_tot_t > 0 else 0.0
         prom_mensual_t = total_kpi_retiros_t / 12
+        meses_t = 12.0
+        dias_validos_t = 365
 
         df_trans_fa = df_trans_fechas_a[df_trans_fechas_a["Año"] == ano_sel_t] if (not df_trans_fechas_a.empty and "Año" in df_trans_fechas_a.columns) else pd.DataFrame()
         total_trans_a_f = df_trans_fa["Valor"].sum() if not df_trans_fa.empty else 0.0
@@ -1039,12 +1058,12 @@ else:
         lbl_compras_t = f"Total Compras por Internet ({filtro_ano_todos})"
         lbl_swift_t = f"Total Swift ({filtro_ano_todos})"
 
-    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}<br>Monto promedio por retiro: ${ticket_prom_t:,.2f}<br>Gasto promedio mensual: ${prom_mensual_t:,.2f}"
-    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}<br>Frecuencia entre retiros: cada {frecuencia_dias_t:.1f} días ({n_retiros_tot_t:,} retiros)"
+    txt_det_total_retiros = f"Austro: ${total_retiros_a_f:,.2f} | Jardín: ${total_retiros_j_f:,.2f}<br>Monto prom. por retiro: ${ticket_prom_t:,.2f} (${total_kpi_retiros_t:,.2f} ÷ {n_retiros_tot_t:,} retiros)<br>Gasto prom. mensual: ${prom_mensual_t:,.2f} (${total_kpi_retiros_t:,.2f} ÷ {meses_t:.1f} meses)"
+    txt_det_retiro_dia = f"Austro: ${kpi_retiro_dia_a:,.2f} | Jardín: ${kpi_retiro_dia_j:,.2f}<br>Frecuencia entre retiros: cada {frecuencia_dias_t:.1f} días ({dias_validos_t:,} días ÷ {n_retiros_tot_t:,} retiros)"
     txt_det_trans = f"Austro: ${total_trans_a_f:,.2f} | Jardín: ${total_trans_j_f:,.2f}"
 
     ayuda_total_retiros_t = "Suma total de retiros en efectivo consolidados de ambas entidades."
-    ayuda_retiro_dia_t = "Frecuencia: Cada cuántos días haces un retiro. Retiro/día: Lo que gastas en efectivo dividido por día."
+    ayuda_retiro_dia_t = "Frecuencia: Cada cuántos días haces un retiro (días ÷ retiros). Retiro/día: Gasto diario de efectivo."
 
     n_trans_costo_a_det = len(df_trans_costo_a[df_trans_costo_a["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_a.empty and "Año" in df_trans_costo_a.columns) else (len(df_trans_costo_a) if not df_trans_costo_a.empty else 0)
     n_trans_costo_j_det = len(df_trans_costo_j[df_trans_costo_j["Año"] == int(filtro_ano_todos)]) if (filtro_ano_todos != "Todos" and not df_trans_costo_j.empty and "Año" in df_trans_costo_j.columns) else (len(df_trans_costo_j) if not df_trans_costo_j.empty else 0)
@@ -1065,10 +1084,10 @@ else:
 
     with st.expander("💡 Guía rápida: ¿Cómo analizar estos datos de retiros?"):
         st.markdown("""
-        * **Monto promedio por retiro:** Es el dinero que sacas en una sola transacción. Te indica si estás realizando extracciones grandes o pequeñas.
-        * **Frecuencia entre retiros:** Indica cada cuántos días vuelves a sacar dinero. Si el número de días es bajo (ej. cada 2 o 3 días), significa que sacas efectivo muy seguido.
-        * **Gasto promedio mensual:** Proyección del dinero en efectivo que usas al mes para comparar contra tu presupuesto.
-        * **Retiro por día:** El consumo promedio diario de efectivo.
+        * **Monto promedio por retiro:** Se obtiene dividiendo la suma total de dinero retirado para el número total de registros de retiro ($Total ÷ Retiros).
+        * **Gasto promedio mensual:** Se calcula dividiendo la suma total para el número de meses analizados ($Total ÷ Meses).
+        * **Frecuencia entre retiros:** Indica cada cuántos días realizas un retiro ($Días ÷ Retiros).
+        * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días).
         """)
 
 if __name__ == "__main__":
