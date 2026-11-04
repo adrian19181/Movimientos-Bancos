@@ -1,4 +1,6 @@
+import io
 import pandas as pd
+import requests
 import streamlit as st
 
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
@@ -21,7 +23,10 @@ ANO_ACTUAL_REAL = FECHA_ACTUAL.year
 @st.cache_data(ttl=60)
 def cargar_todas_las_hojas(url):
     try:
-        return pd.read_excel(url, sheet_name=None)
+        response = requests.get(url, timeout=30)
+        if response.status_code == 200:
+            return pd.read_excel(io.BytesIO(response.content), sheet_name=None, engine="openpyxl")
+        return {}
     except Exception:
         return {}
 
