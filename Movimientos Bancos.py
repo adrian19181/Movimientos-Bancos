@@ -1,5 +1,3 @@
-import os
-import sys
 import pandas as pd
 import streamlit as st
 
@@ -1144,7 +1142,3 @@ else:
         * **Frecuencia entre retiros:** Indica cada cuántos días realizas un retiro ($Días ÷ Retiros).
         * **Retiro por día:** Representa el gasto diario promedio de efectivo ($Total ÷ Días transcurridos hasta hoy).
         """)
-
-if __name__ == "__main__":
-    if "streamlit" not in sys.argv[0]:
-        os.system(f'streamlit run "{__file__}" --server.port 8501')
