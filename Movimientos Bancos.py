@@ -2,16 +2,12 @@ import io
 import pandas as pd
 import requests
 import streamlit as st
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.platypus import HRFlowable, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 st.set_page_config(layout="wide", initial_sidebar_state="collapsed")
-
-if st.button("🔄 Actualizar Datos", use_container_width=True):
-    st.rerun()
-
-# Título principal centrado
-st.html(
-    '<h2 style="text-align: center; font-size: 26px; font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: #FFFFFF;">Movimientos: Austro y Jardín.</h2>'
-)
 
 EXCEL_URL_AUSTRO = "https://docs.google.com/spreadsheets/d/19aw00haXlThBf0AlHwMsYNabeFGAbbjw/export?format=xlsx"
 EXCEL_URL_JARDIN = "https://docs.google.com/spreadsheets/d/1RLGdS04je773Qi0U2Z02A49VMrgF5ViH/export?format=xlsx"
@@ -474,6 +470,444 @@ if not df_raw_trans_j.empty and "Fecha" in df_raw_trans_j.columns and "Valor" in
         {"Tipo Gasto": "Otros", "Valor Total": total_otros_j}
     ])
 
+# PRE-CALCULO DE TABLAS PARA REPORTES Y PDF
+if not df_retiros_a.empty:
+    ultimo_retiro_row = df_retiros_a.iloc[-1]
+    txt_ultimo_retiro = f"{ultimo_retiro_row['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultimo_retiro_row['Valor']:,.2f}"
+else:
+    txt_ultimo_retiro = "N/A"
+
+tabla_anos = (
+    df_retiros_a.groupby("Año")["Valor"]
+    .agg(N_Retiros="count", Total_USD="sum")
+    .reset_index()
+    if not df_retiros_a.empty else pd.DataFrame()
+)
+
+if not tabla_anos.empty:
+    tabla_anos["Ticket_Promedio"] = tabla_anos["Total_USD"] / tabla_anos["N_Retiros"]
+    tabla_anos["Prom_Mensual"] = tabla_anos.apply(calcular_promedio_mensual_row, axis=1)
+    tabla_anos["Retiro_Dia"] = tabla_anos.apply(calcular_retiro_dia_row, axis=1)
+    tabla_anos["Año"] = tabla_anos["Año"].astype(str)
+    tabla_anos.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
+else:
+    tabla_anos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
+
+if not df_trans_clean_a.empty:
+    tabla_trans = (
+        df_trans_clean_a.groupby("Institución")["Valor"]
+        .agg(N_Trans="count", Total_USD="sum")
+        .reset_index()
+        .sort_values("Total_USD", ascending=False)
+    )
+    tabla_trans.columns = ["Entidad Financiera", "Nº Transferencias", "Total Transferido"]
+else:
+    tabla_trans = pd.DataFrame(columns=["Entidad Financiera", "Nº Transferencias", "Total Transferido"])
+
+if not tabla_trans.empty:
+    tabla_trans["Entidad Financiera"] = tabla_trans["Entidad Financiera"].apply(dos_lineas_banco)
+
+if not df_trans_fechas_a.empty:
+    ultima_trans_row = df_trans_fechas_a.iloc[-1]
+    txt_ultima_trans = f"{ultima_trans_row['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultima_trans_row['Valor']:,.2f}"
+    tabla_trans_anos = df_trans_fechas_a.groupby("Año")["Valor"].sum().reset_index()
+    tabla_trans_anos["Año"] = tabla_trans_anos["Año"].astype(str)
+    tabla_trans_anos.columns = ["Año", "Total Transferido"]
+else:
+    txt_ultima_trans = "N/A"
+    tabla_trans_anos = pd.DataFrame(columns=["Año", "Total Transferido"])
+
+if not df_compras_a.empty:
+    tabla_compras = (
+        df_compras_a.groupby("Establecimiento", as_index=False)["Valor"]
+        .agg(N_Compras="count", Total_USD="sum")
+        .sort_values("Total_USD", ascending=False)
+        .reset_index(drop=True)
+    )
+    tabla_compras.columns = ["Establecimiento", "Nº Compras", "Total Comprado"]
+else:
+    tabla_compras = pd.DataFrame(columns=["Establecimiento", "Nº Compras", "Total Comprado"])
+
+if not df_retiros_j.empty:
+    ultimo_retiro_j = df_retiros_j.iloc[-1]
+    txt_ultimo_retiro_j = f"{ultimo_retiro_j['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultimo_retiro_j['Valor']:,.2f}"
+else:
+    txt_ultimo_retiro_j = "N/A"
+
+tabla_anos_j = (
+    df_retiros_j.groupby("Año")["Valor"]
+    .agg(N_Retiros="count", Total_USD="sum")
+    .reset_index()
+    if not df_retiros_j.empty else pd.DataFrame()
+)
+
+if not tabla_anos_j.empty:
+    tabla_anos_j["Ticket_Promedio"] = tabla_anos_j["Total_USD"] / tabla_anos_j["N_Retiros"]
+    tabla_anos_j["Prom_Mensual"] = tabla_anos_j.apply(calcular_promedio_mensual_row, axis=1)
+    tabla_anos_j["Retiro_Dia"] = tabla_anos_j.apply(calcular_retiro_dia_row, axis=1)
+    tabla_anos_j["Año"] = tabla_anos_j["Año"].astype(str)
+    tabla_anos_j.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
+else:
+    tabla_anos_j = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
+
+if not df_trans_fechas_j.empty:
+    ultima_trans_j = df_trans_fechas_j.iloc[-1]
+    txt_ultima_trans_j = f"{ultima_trans_j['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultima_trans_j['Valor']:,.2f}"
+    tabla_trans_j_anos = (
+        df_trans_fechas_j.groupby("Año")["Valor"]
+        .agg(N_Trans="count", Total_USD="sum")
+        .reset_index()
+    )
+    tabla_trans_j_anos["Año"] = tabla_trans_j_anos["Año"].astype(str)
+    tabla_trans_j_anos.columns = ["Año", "Nº Transferencias", "Total Transferido"]
+else:
+    txt_ultima_trans_j = "N/A"
+    tabla_trans_j_anos = pd.DataFrame(columns=["Año", "Nº Transferencias", "Total Transferido"])
+
+df_retiros_todos = pd.concat([df_retiros_a, df_retiros_j], ignore_index=True) if not (df_retiros_a.empty and df_retiros_j.empty) else pd.DataFrame()
+
+tabla_anos_todos = (
+    df_retiros_todos.groupby("Año")["Valor"]
+    .agg(N_Retiros="count", Total_USD="sum")
+    .reset_index()
+    if not df_retiros_todos.empty else pd.DataFrame()
+)
+
+if not tabla_anos_todos.empty:
+    tabla_anos_todos["Ticket_Promedio"] = tabla_anos_todos["Total_USD"] / tabla_anos_todos["N_Retiros"]
+    tabla_anos_todos["Prom_Mensual"] = tabla_anos_todos.apply(calcular_promedio_mensual_row, axis=1)
+    tabla_anos_todos["Retiro_Dia"] = tabla_anos_todos.apply(calcular_retiro_dia_row, axis=1)
+    tabla_anos_todos["Año"] = tabla_anos_todos["Año"].astype(str)
+    tabla_anos_todos.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
+else:
+    tabla_anos_todos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
+
+if not df_retiros_todos.empty:
+    df_retiros_todos_sorted = df_retiros_todos.sort_values("Fecha_dt")
+    ultimo_retiro_t = df_retiros_todos_sorted.iloc[-1]
+    txt_ultimo_retiro_t = f"{ultimo_retiro_t['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultimo_retiro_t['Valor']:,.2f}"
+else:
+    txt_ultimo_retiro_t = "N/A"
+
+df_trans_todos = pd.concat([df_trans_fechas_a, df_trans_fechas_j], ignore_index=True) if not (df_trans_fechas_a.empty and df_trans_fechas_j.empty) else pd.DataFrame()
+
+tabla_gastos_trans_todos = pd.DataFrame([
+    {"Tipo Gasto": "Intereses<br>Ganados<br>(Austro, Jardín)", "Valor Total": total_intereses_a + total_intereses_ganados_j},
+    {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
+    {"Tipo Gasto": "Impuestos<br>Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
+    {"Tipo Gasto": "Pago<br>tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
+    {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
+    {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
+    {"Tipo Gasto": "Gastos<br>(Austro, Jardín)", "Valor Total": total_gastos_a + total_gastos_j},
+    {"Tipo Gasto": "Movimientos No<br>Asignados<br>(Jardín)", "Valor Total": total_no_asignados_j},
+    {"Tipo Gasto": "Deposito Garantia<br>Amex<br>(Austro)", "Valor Total": total_garantia_a},
+    {"Tipo Gasto": "Otros<br>(Austro, Jardín)", "Valor Total": total_otros_a + total_otros_j}
+])
+
+tabla_trans_todos_anos = (
+    df_trans_todos.groupby("Año")["Valor"]
+    .agg(N_Trans="count", Total_USD="sum")
+    .reset_index()
+    if not df_trans_todos.empty else pd.DataFrame()
+)
+
+if not tabla_trans_todos_anos.empty:
+    tabla_trans_todos_anos["Año"] = tabla_trans_todos_anos["Año"].astype(str)
+    tabla_trans_todos_anos.columns = ["Año", "Nº Transferencias", "Total Transferido"]
+else:
+    tabla_trans_todos_anos = pd.DataFrame(columns=["Año", "Nº Transferencias", "Total Transferido"])
+
+if not df_trans_todos.empty:
+    df_trans_todos_sorted = df_trans_todos.sort_values("Fecha_dt")
+    ultima_trans_t = df_trans_todos_sorted.iloc[-1]
+    txt_ultima_trans_t = f"{ultima_trans_t['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultima_trans_t['Valor']:,.2f}"
+else:
+    txt_ultima_trans_t = "N/A"
+
+
+def generar_pdf():
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=36,
+        leftMargin=36,
+        topMargin=36,
+        bottomMargin=36,
+    )
+    styles = getSampleStyleSheet()
+
+    title_style = ParagraphStyle(
+        "DocTitle",
+        parent=styles["Heading1"],
+        fontName="Helvetica-Bold",
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor("#0F172A"),
+        alignment=1,
+        spaceAfter=10,
+    )
+
+    h2_style = ParagraphStyle(
+        "SectionHeading",
+        parent=styles["Heading2"],
+        fontName="Helvetica-Bold",
+        fontSize=13,
+        leading=16,
+        textColor=colors.HexColor("#0F172A"),
+        spaceBefore=12,
+        spaceAfter=6,
+    )
+
+    cell_style = ParagraphStyle(
+        "CellText",
+        fontName="Helvetica",
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#000000"),
+        alignment=1,
+    )
+
+    cell_bold = ParagraphStyle(
+        "CellBold",
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#000000"),
+        alignment=1,
+    )
+
+    header_style = ParagraphStyle(
+        "HeaderStyle",
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#000000"),
+        alignment=1,
+    )
+
+    kpi_title_style = ParagraphStyle(
+        "KPITitle",
+        fontName="Helvetica-Bold",
+        fontSize=9,
+        leading=11,
+        textColor=colors.HexColor("#1E293B"),
+        alignment=1,
+    )
+
+    kpi_value_style = ParagraphStyle(
+        "KPIValue",
+        fontName="Helvetica-Bold",
+        fontSize=14,
+        leading=16,
+        textColor=colors.HexColor("#0F172A"),
+        alignment=1,
+    )
+
+    story = []
+
+    story.append(Paragraph("Movimientos: Austro y Jardín", title_style))
+    story.append(
+        Paragraph(
+            f"Reporte generado el {pd.Timestamp.now().strftime('%d/%m/%Y %H:%M')}",
+            cell_style,
+        )
+    )
+    story.append(Spacer(1, 10))
+
+    def create_table_flowable(df_input):
+        if df_input.empty:
+            return Paragraph("Sin datos disponibles", cell_style)
+
+        table_data = []
+        headers = [
+            Paragraph(
+                str(col).replace("<br>", " ").replace(" ($)", "").replace("$", ""),
+                header_style,
+            )
+            for col in df_input.columns
+        ]
+        table_data.append(headers)
+
+        for row_idx, row in df_input.iterrows():
+            row_cells = []
+            for col_idx, val in enumerate(row):
+                if col_idx == 0:
+                    val_str = str(val).replace("<br>", " ")
+                    row_cells.append(Paragraph(val_str, cell_bold))
+                elif isinstance(val, (int, float)):
+                    col_name = str(df_input.columns[col_idx])
+                    if any(
+                        kw in col_name
+                        for kw in [
+                            "Total",
+                            "Día",
+                            "Transferido",
+                            "Comprado",
+                            "Valor",
+                            "Ticket",
+                            "Mensual",
+                            "Promedio",
+                        ]
+                    ):
+                        formatted_val = f"${val:,.2f}"
+                    else:
+                        formatted_val = (
+                            f"{int(val):,}" if val == int(val) else f"{val:,}"
+                        )
+                    row_cells.append(Paragraph(formatted_val, cell_style))
+                else:
+                    val_str = str(val).replace("<br>", " ")
+                    row_cells.append(Paragraph(val_str, cell_style))
+            table_data.append(row_cells)
+
+        num_cols = len(df_input.columns)
+        col_width = 540.0 / num_cols if num_cols > 0 else 540.0
+
+        t = Table(table_data, colWidths=[col_width] * num_cols)
+        t_style = [
+            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#FFEB3B")),
+            ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+            ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor("#000000")),
+            ("TOPPADDING", (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ]
+
+        for r_idx in range(1, len(table_data)):
+            bg_color = (
+                colors.HexColor("#E8F5E9")
+                if r_idx % 2 == 1
+                else colors.HexColor("#FFFDE7")
+            )
+            t_style.append(("BACKGROUND", (1, r_idx), (-1, r_idx), bg_color))
+            t_style.append(
+                ("BACKGROUND", (0, r_idx), (0, r_idx), colors.HexColor("#FFEB3B"))
+            )
+
+        t.setStyle(TableStyle(t_style))
+        return t
+
+    def create_kpi_card_flowable(titulo, valor_str):
+        p_t = Paragraph(str(titulo).replace("<br>", " "), kpi_title_style)
+        p_v = Paragraph(str(valor_str), kpi_value_style)
+        content = [p_t, Spacer(1, 2), p_v]
+
+        kpi_table = Table([[content]], colWidths=[260])
+        kpi_table.setStyle(
+            TableStyle([
+                ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#F8FAFC")),
+                ("BOX", (0, 0), (-1, -1), 1.5, colors.HexColor("#0F172A")),
+                ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+                ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+            ])
+        )
+        return kpi_table
+
+    # 1. BANCO DEL AUSTRO
+    story.append(Paragraph("1. BANCO DEL AUSTRO", h2_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#0F172A"), spaceBefore=2, spaceAfter=8))
+    
+    story.append(Paragraph("Retiros por Año", ParagraphStyle("SubA", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_anos))
+    story.append(Spacer(1, 6))
+
+    story.append(create_kpi_card_flowable("Último Retiro", txt_ultimo_retiro))
+    story.append(Spacer(1, 8))
+
+    story.append(Paragraph("Gastos Transferencias Interbancarias", ParagraphStyle("SubB", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    if not tabla_gastos_trans_a.empty:
+        story.append(create_table_flowable(tabla_gastos_trans_a))
+        story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Transferencias por Entidad Financiera", ParagraphStyle("SubC", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_trans))
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Transferencias por Año", ParagraphStyle("SubD", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_trans_anos))
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Compras por Internet", ParagraphStyle("SubE", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_compras))
+    story.append(Spacer(1, 10))
+
+    # 2. JARDÍN AZUAYO
+    story.append(Paragraph("2. JARDÍN AZUAYO", h2_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#0F172A"), spaceBefore=2, spaceAfter=8))
+
+    story.append(Paragraph("Retiros por Año", ParagraphStyle("SubF", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_anos_j))
+    story.append(Spacer(1, 6))
+
+    story.append(create_kpi_card_flowable("Último Retiro", txt_ultimo_retiro_j))
+    story.append(Spacer(1, 8))
+
+    story.append(Paragraph("Gastos Transferencias Interbancarias", ParagraphStyle("SubG", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    if not tabla_gastos_trans_j.empty:
+        story.append(create_table_flowable(tabla_gastos_trans_j))
+        story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Transferencias por Año", ParagraphStyle("SubH", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_trans_j_anos))
+    story.append(Spacer(1, 10))
+
+    # 3. CONSOLIDADO
+    story.append(Paragraph("3. CONSOLIDADO (AMBOS BANCOS)", h2_style))
+    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#0F172A"), spaceBefore=2, spaceAfter=8))
+
+    story.append(Paragraph("Retiros Consolidados", ParagraphStyle("SubI", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_anos_todos))
+    story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Gastos Transferencias Consolidados", ParagraphStyle("SubJ", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    if not tabla_gastos_trans_todos.empty:
+        story.append(create_table_flowable(tabla_gastos_trans_todos))
+        story.append(Spacer(1, 6))
+
+    story.append(Paragraph("Transferencias Consolidadas por Año", ParagraphStyle("SubK", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(tabla_trans_todos_anos))
+    story.append(Spacer(1, 10))
+
+    doc.build(story)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+# Botones superiores de actualización y exportación a PDF
+col_act, col_pdf = st.columns(2)
+with col_act:
+    if st.button("🔄 Actualizar Datos", use_container_width=True):
+        st.rerun()
+with col_pdf:
+    pdf_bytes = generar_pdf()
+    st.download_button(
+        label="📄 Exportar a PDF",
+        data=pdf_bytes,
+        file_name="Movimientos Bancos.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
+
+# Título principal centrado
+st.html(
+    '<h2 style="text-align: center; font-size: 26px; font-weight: bold; margin-top: 10px; margin-bottom: 20px; color: #FFFFFF;">Movimientos: Austro y Jardín.</h2>'
+)
 
 # Filtro principal en lista desplegable
 banco_seleccionado = st.selectbox(
@@ -487,63 +921,6 @@ banco_seleccionado = st.selectbox(
 # VISTA: BANCO DEL AUSTRO
 # ==============================================================================
 if banco_seleccionado == "Banco del Austro":
-    if not df_retiros_a.empty:
-        ultimo_retiro_row = df_retiros_a.iloc[-1]
-        txt_ultimo_retiro = f"{ultimo_retiro_row['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultimo_retiro_row['Valor']:,.2f}"
-    else:
-        txt_ultimo_retiro = "N/A"
-
-    tabla_anos = (
-        df_retiros_a.groupby("Año")["Valor"]
-        .agg(N_Retiros="count", Total_USD="sum")
-        .reset_index()
-        if not df_retiros_a.empty else pd.DataFrame()
-    )
-
-    if not tabla_anos.empty:
-        tabla_anos["Ticket_Promedio"] = tabla_anos["Total_USD"] / tabla_anos["N_Retiros"]
-        tabla_anos["Prom_Mensual"] = tabla_anos.apply(calcular_promedio_mensual_row, axis=1)
-        tabla_anos["Retiro_Dia"] = tabla_anos.apply(calcular_retiro_dia_row, axis=1)
-        tabla_anos["Año"] = tabla_anos["Año"].astype(str)
-        tabla_anos.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
-    else:
-        tabla_anos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
-
-    if not df_trans_clean_a.empty:
-        tabla_trans = (
-            df_trans_clean_a.groupby("Institución")["Valor"]
-            .agg(N_Trans="count", Total_USD="sum")
-            .reset_index()
-            .sort_values("Total_USD", ascending=False)
-        )
-        tabla_trans.columns = ["Entidad Financiera", "Nº Transferencias", "Total Transferido"]
-    else:
-        tabla_trans = pd.DataFrame(columns=["Entidad Financiera", "Nº Transferencias", "Total Transferido"])
-
-    if not tabla_trans.empty:
-        tabla_trans["Entidad Financiera"] = tabla_trans["Entidad Financiera"].apply(dos_lineas_banco)
-
-    if not df_trans_fechas_a.empty:
-        ultima_trans_row = df_trans_fechas_a.iloc[-1]
-        txt_ultima_trans = f"{ultima_trans_row['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultima_trans_row['Valor']:,.2f}"
-        tabla_trans_anos = df_trans_fechas_a.groupby("Año")["Valor"].sum().reset_index()
-        tabla_trans_anos["Año"] = tabla_trans_anos["Año"].astype(str)
-        tabla_trans_anos.columns = ["Año", "Total Transferido"]
-    else:
-        txt_ultima_trans = "N/A"
-        tabla_trans_anos = pd.DataFrame(columns=["Año", "Total Transferido"])
-
-    if not df_compras_a.empty:
-        tabla_compras = (
-            df_compras_a.groupby("Establecimiento", as_index=False)["Valor"]
-            .agg(N_Compras="count", Total_USD="sum")
-            .sort_values("Total_USD", ascending=False)
-            .reset_index(drop=True)
-        )
-        tabla_compras.columns = ["Establecimiento", "Nº Compras", "Total Comprado"]
-    else:
-        tabla_compras = pd.DataFrame(columns=["Establecimiento", "Nº Compras", "Total Comprado"])
-
     anos_set_austro = set()
     for df_temp in [df_retiros_a, df_trans_fechas_a, df_compras_a, df_swift_a]:
         if "Año" in df_temp.columns:
@@ -709,42 +1086,6 @@ if banco_seleccionado == "Banco del Austro":
 # VISTA: JARDÍN AZUAYO
 # ==============================================================================
 elif banco_seleccionado == "Jardín Azuayo":
-    if not df_retiros_j.empty:
-        ultimo_retiro_j = df_retiros_j.iloc[-1]
-        txt_ultimo_retiro_j = f"{ultimo_retiro_j['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultimo_retiro_j['Valor']:,.2f}"
-    else:
-        txt_ultimo_retiro_j = "N/A"
-
-    tabla_anos_j = (
-        df_retiros_j.groupby("Año")["Valor"]
-        .agg(N_Retiros="count", Total_USD="sum")
-        .reset_index()
-        if not df_retiros_j.empty else pd.DataFrame()
-    )
-
-    if not tabla_anos_j.empty:
-        tabla_anos_j["Ticket_Promedio"] = tabla_anos_j["Total_USD"] / tabla_anos_j["N_Retiros"]
-        tabla_anos_j["Prom_Mensual"] = tabla_anos_j.apply(calcular_promedio_mensual_row, axis=1)
-        tabla_anos_j["Retiro_Dia"] = tabla_anos_j.apply(calcular_retiro_dia_row, axis=1)
-        tabla_anos_j["Año"] = tabla_anos_j["Año"].astype(str)
-        tabla_anos_j.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
-    else:
-        tabla_anos_j = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
-
-    if not df_trans_fechas_j.empty:
-        ultima_trans_j = df_trans_fechas_j.iloc[-1]
-        txt_ultima_trans_j = f"{ultima_trans_j['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultima_trans_j['Valor']:,.2f}"
-        tabla_trans_j_anos = (
-            df_trans_fechas_j.groupby("Año")["Valor"]
-            .agg(N_Trans="count", Total_USD="sum")
-            .reset_index()
-        )
-        tabla_trans_j_anos["Año"] = tabla_trans_j_anos["Año"].astype(str)
-        tabla_trans_j_anos.columns = ["Año", "Nº Transferencias", "Total Transferido"]
-    else:
-        txt_ultima_trans_j = "N/A"
-        tabla_trans_j_anos = pd.DataFrame(columns=["Año", "Nº Transferencias", "Total Transferido"])
-
     anos_set_jardin = set()
     for df_temp in [df_retiros_j, df_trans_fechas_j]:
         if "Año" in df_temp.columns:
@@ -894,68 +1235,6 @@ elif banco_seleccionado == "Jardín Azuayo":
 # VISTA: TODOS (CONSOLIDADO - SUMA DE AMBOS BANCOS)
 # ==============================================================================
 else:
-    # 1. Retiros Consolidados (Austro + Jardín Azuayo)
-    df_retiros_todos = pd.concat([df_retiros_a, df_retiros_j], ignore_index=True) if not (df_retiros_a.empty and df_retiros_j.empty) else pd.DataFrame()
-
-    tabla_anos_todos = (
-        df_retiros_todos.groupby("Año")["Valor"]
-        .agg(N_Retiros="count", Total_USD="sum")
-        .reset_index()
-        if not df_retiros_todos.empty else pd.DataFrame()
-    )
-
-    if not tabla_anos_todos.empty:
-        tabla_anos_todos["Ticket_Promedio"] = tabla_anos_todos["Total_USD"] / tabla_anos_todos["N_Retiros"]
-        tabla_anos_todos["Prom_Mensual"] = tabla_anos_todos.apply(calcular_promedio_mensual_row, axis=1)
-        tabla_anos_todos["Retiro_Dia"] = tabla_anos_todos.apply(calcular_retiro_dia_row, axis=1)
-        tabla_anos_todos["Año"] = tabla_anos_todos["Año"].astype(str)
-        tabla_anos_todos.columns = ["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"]
-    else:
-        tabla_anos_todos = pd.DataFrame(columns=["Año", "Nº Retiros", "Total", "Ticket Promedio", "Promedio Mensual", "Retiro / Día"])
-
-    if not df_retiros_todos.empty:
-        df_retiros_todos_sorted = df_retiros_todos.sort_values("Fecha_dt")
-        ultimo_retiro_t = df_retiros_todos_sorted.iloc[-1]
-        txt_ultimo_retiro_t = f"{ultimo_retiro_t['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultimo_retiro_t['Valor']:,.2f}"
-    else:
-        txt_ultimo_retiro_t = "N/A"
-
-    # 2. Transferencias Interbancarias Consolidadas (Austro + Jardín Azuayo)
-    df_trans_todos = pd.concat([df_trans_fechas_a, df_trans_fechas_j], ignore_index=True) if not (df_trans_fechas_a.empty and df_trans_fechas_j.empty) else pd.DataFrame()
-
-    tabla_gastos_trans_todos = pd.DataFrame([
-        {"Tipo Gasto": "Intereses<br>Ganados<br>(Austro, Jardín)", "Valor Total": total_intereses_a + total_intereses_ganados_j},
-        {"Tipo Gasto": "Dentista<br>(Austro, Jardín)", "Valor Total": total_dentista_a + total_dentista_j},
-        {"Tipo Gasto": "Impuestos<br>Importaciones<br>(Austro)", "Valor Total": total_impuestos_a},
-        {"Tipo Gasto": "Pago<br>tarjetas<br>(Austro)", "Valor Total": total_tarjetas_a},
-        {"Tipo Gasto": "Inversiones<br>(Austro, Jardín)", "Valor Total": total_inversiones_a + total_inversiones_j},
-        {"Tipo Gasto": "Token<br>(Austro)", "Valor Total": total_token_a},
-        {"Tipo Gasto": "Gastos<br>(Austro, Jardín)", "Valor Total": total_gastos_a + total_gastos_j},
-        {"Tipo Gasto": "Movimientos No<br>Asignados<br>(Jardín)", "Valor Total": total_no_asignados_j},
-        {"Tipo Gasto": "Deposito Garantia<br>Amex<br>(Austro)", "Valor Total": total_garantia_a},
-        {"Tipo Gasto": "Otros<br>(Austro, Jardín)", "Valor Total": total_otros_a + total_otros_j}
-    ])
-
-    tabla_trans_todos_anos = (
-        df_trans_todos.groupby("Año")["Valor"]
-        .agg(N_Trans="count", Total_USD="sum")
-        .reset_index()
-        if not df_trans_todos.empty else pd.DataFrame()
-    )
-
-    if not tabla_trans_todos_anos.empty:
-        tabla_trans_todos_anos["Año"] = tabla_trans_todos_anos["Año"].astype(str)
-        tabla_trans_todos_anos.columns = ["Año", "Nº Transferencias", "Total Transferido"]
-    else:
-        tabla_trans_todos_anos = pd.DataFrame(columns=["Año", "Nº Transferencias", "Total Transferido"])
-
-    if not df_trans_todos.empty:
-        df_trans_todos_sorted = df_trans_todos.sort_values("Fecha_dt")
-        ultima_trans_t = df_trans_todos_sorted.iloc[-1]
-        txt_ultima_trans_t = f"{ultima_trans_t['Fecha_dt'].strftime('%d/%m/%Y')} — ${ultima_trans_t['Valor']:,.2f}"
-    else:
-        txt_ultima_trans_t = "N/A"
-
     anos_set_todos = set()
     for df_temp in [df_retiros_todos, df_trans_todos, df_compras_a, df_swift_a]:
         if "Año" in df_temp.columns:
