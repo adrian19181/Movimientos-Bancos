@@ -808,10 +808,92 @@ def generar_pdf():
         )
         return kpi_table
 
+    # --- CÁLCULO DE TABLAS DE KPIS GENERALES PARA EL PDF ---
+    # Austro KPIs
+    tot_ret_a = df_retiros_a["Valor"].sum() if not df_retiros_a.empty else 0.0
+    n_ret_a = len(df_retiros_a) if not df_retiros_a.empty else 0
+    tck_prom_a = tot_ret_a / n_ret_a if n_ret_a > 0 else 0.0
+    dias_val_a = (FECHA_ACTUAL - df_retiros_a["Fecha_dt"].min()).days if not df_retiros_a.empty else 1
+    dias_val_a = max(dias_val_a, 1)
+    ret_dia_a = tot_ret_a / dias_val_a
+    frec_a = dias_val_a / n_ret_a if n_ret_a > 0 else 0.0
+    meses_a = (dias_val_a / 30.44) if dias_val_a > 0 else 1.0
+    prom_mens_a = tot_ret_a / meses_a
+
+    tot_trans_a = df_trans_fechas_a["Valor"].sum() if not df_trans_fechas_a.empty else 0.0
+    n_trans_c_a = len(df_trans_costo_a) if not df_trans_costo_a.empty else 0
+    costo_trans_a = n_trans_c_a * 0.41
+    anos_per_a = ((FECHA_ACTUAL - df_trans_fechas_a["Fecha_dt"].min()).days / 365.25) if not df_trans_fechas_a.empty else 0.0
+
+    tot_compras_a = df_compras_a["Valor"].sum() if not df_compras_a.empty else 0.0
+    tot_swift_a = df_swift_a["Valor"].sum() if not df_swift_a.empty else 0.0
+
+    df_kpis_austro = pd.DataFrame([
+        {"Indicador Clave (KPI)": "Total Retiros", "Valor Total": f"${tot_ret_a:,.2f}", "Detalle / Frecuencia": f"Prom. Retiro: ${tck_prom_a:,.2f} | Prom. Mensual: ${prom_mens_a:,.2f}"},
+        {"Indicador Clave (KPI)": "Retiro / Día", "Valor Total": f"${ret_dia_a:,.2f}", "Detalle / Frecuencia": f"Frecuencia: Cada {frec_a:.1f} días ({dias_val_a:,} días ÷ {n_ret_a:,} retiros)"},
+        {"Indicador Clave (KPI)": "Total Transferencias", "Valor Total": f"${tot_trans_a:,.2f}", "Detalle / Frecuencia": "-"},
+        {"Indicador Clave (KPI)": "Costo Total Transferencias", "Valor Total": f"${costo_trans_a:,.2f}", "Detalle / Frecuencia": f"Nº Trans. con Costo: {n_trans_c_a:,} | Período: {anos_per_a:.2f} años"},
+        {"Indicador Clave (KPI)": "Total Compras por Internet", "Valor Total": f"${tot_compras_a:,.2f}", "Detalle / Frecuencia": "-"},
+        {"Indicador Clave (KPI)": "Total Swift", "Valor Total": f"${tot_swift_a:,.2f}", "Detalle / Frecuencia": "-"}
+    ])
+
+    # Jardín KPIs
+    tot_ret_j = df_retiros_j["Valor"].sum() if not df_retiros_j.empty else 0.0
+    n_ret_j = len(df_retiros_j) if not df_retiros_j.empty else 0
+    tck_prom_j = tot_ret_j / n_ret_j if n_ret_j > 0 else 0.0
+    dias_val_j = (FECHA_ACTUAL - df_retiros_j["Fecha_dt"].min()).days if not df_retiros_j.empty else 1
+    dias_val_j = max(dias_val_j, 1)
+    ret_dia_j = tot_ret_j / dias_val_j
+    frec_j = dias_val_j / n_ret_j if n_ret_j > 0 else 0.0
+    meses_j = (dias_val_j / 30.44) if dias_val_j > 0 else 1.0
+    prom_mens_j = tot_ret_j / meses_j
+
+    tot_trans_j = df_trans_fechas_j["Valor"].sum() if not df_trans_fechas_j.empty else 0.0
+    n_trans_c_j = len(df_trans_costo_j) if not df_trans_costo_j.empty else 0
+    costo_trans_j = n_trans_c_j * 0.41
+    anos_per_j = ((FECHA_ACTUAL - df_trans_fechas_j["Fecha_dt"].min()).days / 365.25) if not df_trans_fechas_j.empty else 0.0
+
+    df_kpis_jardin = pd.DataFrame([
+        {"Indicador Clave (KPI)": "Total Retiros", "Valor Total": f"${tot_ret_j:,.2f}", "Detalle / Frecuencia": f"Prom. Retiro: ${tck_prom_j:,.2f} | Prom. Mensual: ${prom_mens_j:,.2f}"},
+        {"Indicador Clave (KPI)": "Retiro / Día", "Valor Total": f"${ret_dia_j:,.2f}", "Detalle / Frecuencia": f"Frecuencia: Cada {frec_j:.1f} días ({dias_val_j:,} días ÷ {n_ret_j:,} retiros)"},
+        {"Indicador Clave (KPI)": "Total Transferencias", "Valor Total": f"${tot_trans_j:,.2f}", "Detalle / Frecuencia": "-"},
+        {"Indicador Clave (KPI)": "Costo Total Transferencias", "Valor Total": f"${costo_trans_j:,.2f}", "Detalle / Frecuencia": f"Nº Trans. con Costo: {n_trans_c_j:,} | Período: {anos_per_j:.2f} años"}
+    ])
+
+    # Consolidado KPIs
+    tot_ret_c = tot_ret_a + tot_ret_j
+    n_ret_c = len(df_retiros_todos) if not df_retiros_todos.empty else 0
+    tck_prom_c = tot_ret_c / n_ret_c if n_ret_c > 0 else 0.0
+    fechas_min_c = [d for d in [df_retiros_a["Fecha_dt"].min() if not df_retiros_a.empty else None, df_retiros_j["Fecha_dt"].min() if not df_retiros_j.empty else None] if d is not None]
+    dias_val_c = (FECHA_ACTUAL - min(fechas_min_c)).days if fechas_min_c else 1
+    dias_val_c = max(dias_val_c, 1)
+    ret_dia_c = tot_ret_c / dias_val_c
+    frec_c = dias_val_c / n_ret_c if n_ret_c > 0 else 0.0
+    meses_c = (dias_val_c / 30.44) if dias_val_c > 0 else 1.0
+    prom_mens_c = tot_ret_c / meses_c
+
+    tot_trans_c = tot_trans_a + tot_trans_j
+    costo_trans_c = (n_trans_c_a + n_trans_c_j) * 0.41
+    anos_per_c = ((FECHA_ACTUAL - df_trans_todos["Fecha_dt"].min()).days / 365.25) if not df_trans_todos.empty else 0.0
+
+    df_kpis_consolidado = pd.DataFrame([
+        {"Indicador Clave (KPI)": "Total Retiros Consolidados", "Valor Total": f"${tot_ret_c:,.2f}", "Detalle / Frecuencia": f"Austro: ${tot_ret_a:,.2f} | Jardín: ${tot_ret_j:,.2f} | Prom. Mensual: ${prom_mens_c:,.2f}"},
+        {"Indicador Clave (KPI)": "Retiro / Día Consolidado", "Valor Total": f"${ret_dia_c:,.2f}", "Detalle / Frecuencia": f"Austro: ${ret_dia_a:,.2f} | Jardín: ${ret_dia_j:,.2f} | Frecuencia: Cada {frec_c:.1f} días"},
+        {"Indicador Clave (KPI)": "Total Transferencias Consolidadas", "Valor Total": f"${tot_trans_c:,.2f}", "Detalle / Frecuencia": f"Austro: ${tot_trans_a:,.2f} | Jardín: ${tot_trans_j:,.2f}"},
+        {"Indicador Clave (KPI)": "Costo Total Transferencias", "Valor Total": f"${costo_trans_c:,.2f}", "Detalle / Frecuencia": f"Nº Trans. con Costo: {n_trans_c_a + n_trans_c_j:,} | Período: {anos_per_c:.2f} años"},
+        {"Indicador Clave (KPI)": "Total Compras por Internet", "Valor Total": f"${tot_compras_a:,.2f}", "Detalle / Frecuencia": "-"},
+        {"Indicador Clave (KPI)": "Total Swift", "Valor Total": f"${tot_swift_a:,.2f}", "Detalle / Frecuencia": "-"}
+    ])
+
     # 1. BANCO DEL AUSTRO
     story.append(Paragraph("1. BANCO DEL AUSTRO", h2_style))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#0F172A"), spaceBefore=2, spaceAfter=8))
     
+    story.append(Paragraph("Indicadores Clave (KPIs)", ParagraphStyle("SubKPI_A", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(df_kpis_austro))
+    story.append(Spacer(1, 6))
+
     story.append(Paragraph("Retiros por Año", ParagraphStyle("SubA", parent=cell_bold, fontSize=10, alignment=0)))
     story.append(Spacer(1, 4))
     story.append(create_table_flowable(tabla_anos))
@@ -845,6 +927,11 @@ def generar_pdf():
     story.append(Paragraph("2. JARDÍN AZUAYO", h2_style))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#0F172A"), spaceBefore=2, spaceAfter=8))
 
+    story.append(Paragraph("Indicadores Clave (KPIs)", ParagraphStyle("SubKPI_J", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(df_kpis_jardin))
+    story.append(Spacer(1, 6))
+
     story.append(Paragraph("Retiros por Año", ParagraphStyle("SubF", parent=cell_bold, fontSize=10, alignment=0)))
     story.append(Spacer(1, 4))
     story.append(create_table_flowable(tabla_anos_j))
@@ -867,6 +954,11 @@ def generar_pdf():
     # 3. CONSOLIDADO
     story.append(Paragraph("3. CONSOLIDADO (AMBOS BANCOS)", h2_style))
     story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#0F172A"), spaceBefore=2, spaceAfter=8))
+
+    story.append(Paragraph("Indicadores Clave (KPIs) Consolidados", ParagraphStyle("SubKPI_C", parent=cell_bold, fontSize=10, alignment=0)))
+    story.append(Spacer(1, 4))
+    story.append(create_table_flowable(df_kpis_consolidado))
+    story.append(Spacer(1, 6))
 
     story.append(Paragraph("Retiros Consolidados", ParagraphStyle("SubI", parent=cell_bold, fontSize=10, alignment=0)))
     story.append(Spacer(1, 4))
